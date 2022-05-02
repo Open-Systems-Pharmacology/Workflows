@@ -6,6 +6,7 @@ on:
       ignored-folders:
         required: false
         type: string
+        default: 'xxxxxxxxxxxxxxxx/aaaaaaaaaaaaaaaaaa/qqqqqqqqqqqqqqqqq' #dummy because empty value cannot be passed to "xrefcheck --ignored"
 
 permissions:
   contents: read
