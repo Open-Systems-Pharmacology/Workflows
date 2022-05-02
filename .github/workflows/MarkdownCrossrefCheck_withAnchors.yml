@@ -1,0 +1,28 @@
+name: Check Markdown Cross References with anchors
+
+on: 
+  workflow_call:
+    inputs:
+      folder-path:
+        required: false
+        type: string
+        default: './'
+
+permissions:
+  contents: read
+
+jobs:
+  linkcheck:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: convert md to html
+      run: |
+          sudo apt-get install pandoc -y
+          find ./ -iname '*.md' -type f -exec sh -c 'echo ${0}; pandoc -f gfm ${0} -o ${0%.md}.html' {} \;
+    - uses: untitaker/hyperlink@0.1.21
+      with:
+        args: ${{ inputs.folder-path }} --check-anchors
+
