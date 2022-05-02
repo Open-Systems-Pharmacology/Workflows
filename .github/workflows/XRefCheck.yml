@@ -1,0 +1,22 @@
+name: Check Markdown Cross References without anchors
+
+on: 
+  workflow_call:
+    inputs:
+      ignored-folders:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  crossref-check-without-anchors:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - uses: serokell/xrefcheck-action@v1
+      with:
+        xrefcheck-args: --mode local-only --ignored ${{ inputs.ignored-folders }}
