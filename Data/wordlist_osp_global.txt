@@ -2324,3 +2324,6 @@ SPC
 Svensson
 Tizanidine
 YWF
+pubchem
+tizanidine
+Pubchem
