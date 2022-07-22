@@ -2442,3 +2442,4 @@ nmdat
 periportal
 pka
 uncompetitive
+peroral
