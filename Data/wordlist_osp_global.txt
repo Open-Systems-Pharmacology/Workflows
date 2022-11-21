@@ -2870,3 +2870,4 @@ atenolol
 acebutolol
 gabapentin
 sotalol
+pindolol
