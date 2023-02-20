@@ -21,4 +21,4 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - name: check utf-8
       run: |
-          find -type f -regex ".*\.\(${{ inputs.file-extensions }})" | xargs iconv -f UTF-8 -o /dev/null --verbose
+          find -type f -regex ".*\.\(${{ inputs.file-extensions }}\)" | xargs iconv -f UTF-8 -o /dev/null --verbose
