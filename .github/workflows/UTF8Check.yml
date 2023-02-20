@@ -1,0 +1,24 @@
+name: Check if all files with given extensions are saved as UTF-8
+
+on: 
+  workflow_call:
+    inputs:
+      file-extensions:
+        description: 'File extension(s) to check separated by \| E.g. R or R\|json'
+        required: false
+        type: string
+        default: 'R\|json\|md' #check all *.R *.json and *.md files in the repository
+
+permissions:
+  contents: read
+
+jobs:
+  utf8check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: check utf-8
+      run: |
+          find -type f -regex ".*\.\(${{ inputs.file-extensions }})" | xargs iconv -f UTF-8 -o /dev/null --verbose
