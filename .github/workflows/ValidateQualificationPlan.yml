@@ -1,0 +1,48 @@
+name: Check Qualification Plan
+
+on: 
+  workflow_call:
+    inputs:
+      qualification-plan:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate-with-referenced-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Extract and download schema
+        run: |
+          sudo apt-get install -y php-json-schema 
+          validate-json ${{ inputs.qualification-plan }} --dump-schema-url | xargs wget
+      - name: Validate JSON with the referenced schema
+        uses: docker://orrosenblatt/validate-json-action:latest
+        env:
+          INPUT_SCHEMA: ./OSP_Qualification_Plan_Schema.json
+          INPUT_JSONS: ${{ inputs.qualification-plan }}
+  validate-with-latest-released-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Download schema from the latest released tag  # https://github.com/marketplace/actions/release-downloader
+        uses: robinraju/release-downloader@v1.7
+        with: 
+          repository: "Open-Systems-Pharmacology/QualificationPlan"
+          latest: true
+          fileName: "OSP_Qualification_Plan_Schema.json"
+          tarBall: false
+          zipBall: false
+          extract: false
+      - name: Validate JSON with the latest released schema
+        uses: docker://orrosenblatt/validate-json-action:latest
+        env:
+          INPUT_SCHEMA: ./OSP_Qualification_Plan_Schema.json
+          INPUT_JSONS: ${{ inputs.qualification-plan }}
