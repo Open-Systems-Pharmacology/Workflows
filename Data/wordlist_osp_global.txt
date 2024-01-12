@@ -249,6 +249,8 @@ calculatePKAnalyses
 callout
 Camu
 canadensis
+Carbamazepine
+carbamazepine
 Cardiothorac
 cardiovascularly
 Carls
@@ -479,6 +481,7 @@ Enzymol
 Enzymology
 eosinophilia
 EP
+epoxide
 eps
 epsfcn
 Epub
@@ -1012,6 +1015,7 @@ menue
 Merlé
 Mertzanis
 Merz
+Messenheimer
 Metab
 metabolization
 metabolizations
@@ -1068,6 +1072,7 @@ Molweight
 mongrale
 monodisperse
 mononuclear
+Monteleone
 Montelukast
 Mortier
 Moschitto
@@ -1106,6 +1111,7 @@ Nelder
 NEQ
 Nestorov
 Neuhaus
+Neuropsychopharmacology
 Neustrom
 Neuvonen
 Neve
@@ -1378,6 +1384,7 @@ RHS
 RHSFormula
 ribonucleic
 Riecke
+rifabutin
 rifampicin
 rifampin
 Rifampin's
