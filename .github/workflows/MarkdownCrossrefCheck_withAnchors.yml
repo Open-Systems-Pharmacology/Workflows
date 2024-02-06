@@ -15,14 +15,14 @@ jobs:
   linkcheck:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         ref: ${{ github.event.pull_request.head.sha }}
     - name: convert md to html
       run: |
           sudo apt-get install pandoc -y
           find ./ -iname '*.md' -type f -exec sh -c 'echo ${0}; pandoc -f gfm ${0} -o ${0%.md}.html' {} \;
-    - uses: untitaker/hyperlink@0.1.21
+    - uses: untitaker/hyperlink@0.1.32
       with:
         args: ${{ inputs.folder-path }} --check-anchors
 

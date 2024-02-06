@@ -10,10 +10,10 @@ jobs:
   Spellcheck:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         ref: ${{ github.event.pull_request.head.sha }}
     - run: |
         wget --no-check-certificate https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/main/Data/wordlist_osp_global.txt
         wget --no-check-certificate https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/main/Config/.spellcheck.yml
-    - uses: rojopolis/spellcheck-github-actions@0.16.0
+    - uses: rojopolis/spellcheck-github-actions@0.35.0
