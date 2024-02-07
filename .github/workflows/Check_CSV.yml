@@ -1,3 +1,6 @@
+# Currently always using COMMA as csv delimiter
+# Could be extended for usage of other delimiters if required
+# (s. https://github.com/Clever/csvlint)
 name: Check if CSV files are valid
 
 on: workflow_call
