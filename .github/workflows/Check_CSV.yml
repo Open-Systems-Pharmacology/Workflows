@@ -1,0 +1,45 @@
+# Currently always using COMMA as csv delimiter
+# Could be extended for usage of other delimiters if required
+# (s. https://github.com/Clever/csvlint)
+name: Check if CSV files are valid
+
+on: workflow_call
+
+permissions:
+  contents: read
+
+jobs:
+  csvlint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Install Ruby #(csvlint.io is a Ruby gem)
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+
+    - name: Install CSV Lint
+      run: gem install csvlint
+
+    - name: Lint all CSV files in the repository
+      shell: bash {0}
+      run: |
+        shopt -s globstar
+        shopt -s nocaseglob
+        for file in **/*.csv; do
+          csvlint $file
+          if [ $? -eq 0 ]; then
+            echo "File $file is valid"
+          else
+            echo "File $file is invalid"
+            echo "::error file=$file::File is invalid"
+            invalid_csv_found=true
+          fi
+        done
+        if [ "$invalid_csv_found" = true ] ; then
+          echo "At least one CSV file is invalid, failing the action"
+          exit 1
+        fi
