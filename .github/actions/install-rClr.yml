@@ -1,0 +1,22 @@
+name: 'Install rClr'
+description: 'Download a rClr build and install it.'
+author: 'Felix MIL'
+
+inputs:
+  RCLR_VERSION:
+    description: 'The version of rClr to install'
+    required: true
+    default: '0.9.2'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download rClr
+      run: |
+        RCLR_URL <- "https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v${{ inputs.RCLR_VERSION }}/rClr_${{ env.RCLR_VERSION }}.zip"
+        download.file(RCLR_URL, "rClr_${{ inputs.RCLR_VERSION }}.zip")
+      shell: Rscript {0}
+    - name: Install rClr
+      run: |
+        install.packages("./rClr_${{ inputs.RCLR_VERSION }}.zip", type = "binary")
+      shell: Rscript {0}
