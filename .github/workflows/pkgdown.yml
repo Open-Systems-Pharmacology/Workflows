@@ -4,6 +4,9 @@ on:
       RCLR_VERSION:
         required: true
         type: 'string'
+      extra-packages:
+        required: false
+        type: 'string'
 
 name: pkgdown
 
@@ -30,17 +33,10 @@ jobs:
         with:
           RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Install package dependencies
+        uses: Felixmil/Workflows/.github/actions/install-package-deps@test-from-fork
         with:
-          extra-packages: |
-            rClr=local::./rClr_${{ inputs.RCLR_VERSION }}.zip
-            any::pkgdown
-            local::.
-            ospsuite.utils=github::Open-Systems-Pharmacology/OSPSuite.RUtils
-            tlf=github::Open-Systems-Pharmacology/TLF-Library
-            ospsuite=github::Open-Systems-Pharmacology/OSPSuite-R
-            ospsuite.parameteridentification=github::Open-Systems-Pharmacology/OSPSuite.ParameterIdentification
-          needs: website
+          extra-packages: ${{ inputs.extra-packages }}
 
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
