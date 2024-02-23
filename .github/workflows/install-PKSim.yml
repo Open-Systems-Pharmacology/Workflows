@@ -1,0 +1,37 @@
+name: 'Install PK-Sim'
+description: 'Setup a PK-Sim installation for Windows machine'
+author: 'Felix MIL'
+
+on:
+  workflow_call
+
+jobs:
+  install_PKSim:
+    runs-on: windows-latest
+    steps:
+      - name: Download latest PK-sim build archive
+        run: |
+          # Define the URL of the PK-sim build archive
+          $url = "https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop"
+          # Define the location where you want to save the zip file
+          $outputPath = "${{ runner.workspace }}/setup.zip"
+          Invoke-WebRequest -Uri $url -OutFile $outputPath
+        shell: powershell
+
+      - name: Unzip PK-sim build archive
+        run: |
+          $zipPath = "${{ runner.workspace }}/setup.zip"
+          $unzipPath = "${{ runner.workspace }}/unzipped"
+          Expand-Archive -Path $zipPath -DestinationPath $unzipPath
+        shell: powershell
+
+      - name: Install PK-sim MSI
+        run: |
+          $msiPath = Get-ChildItem -Path "${{ runner.workspace }}/unzipped" -Filter "*.msi" | Select-Object -First 1
+          if ($msiPath) {
+            Start-Process msiexec -ArgumentList "/i", $msiPath.FullName, "/quiet", "/qn", "/norestart" -Wait
+          } else {
+            Write-Output "No MSI file found in the unzipped directory."
+            exit 1
+          }
+        shell: powershell
