@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: ../actions/install-PKSIM.yml
+      - uses: ./.github/actions/install-PKSIM.yml
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -29,7 +29,7 @@ jobs:
           use-public-rspm: true
 
       - name: Install rClr
-        uses: ../actions/install-rClr.yml
+        uses: ./.github/actions/install-rClr.yml
         with:
           RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
 
