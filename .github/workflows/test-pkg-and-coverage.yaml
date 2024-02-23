@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install PK-Sim
-        uses: ./.github/actions/install-PKSIM.yml
+        uses: Felixmil/Workflows/.github/actions/install-PKSIM@test-from-fork
 
       - name: Setup Pandoc
         uses: r-lib/actions/setup-pandoc@v2
@@ -28,7 +28,7 @@ jobs:
           use-public-rspm: true
 
       - name: Install rClr
-        uses: ./.github/actions/install-rClr.yml
+        uses: Felixmil/Workflows/.github/actions/install-rClr@test-from-fork
         with:
           RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
 
