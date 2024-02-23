@@ -10,12 +10,13 @@ inputs:
 runs:
   using: "composite"
   steps:
-   - name: Install dependencies
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
+    - name: Install dependencies
+      uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        extra-packages: |
             any::rcmdcheck
             any::devtools
             any::covr
             any::pkgdown
             local::.
+            ${{ inputs.extra-packages }}
