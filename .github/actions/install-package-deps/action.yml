@@ -17,7 +17,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - id: Install dependencies
+    - id: install-package-dependencies
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
         extra-packages: |
