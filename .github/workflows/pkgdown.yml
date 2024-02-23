@@ -1,0 +1,81 @@
+on:
+  workflow_call:
+    inputs:
+      RCLR_VERSION:
+        required: true
+        type: 'string'
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+
+name: pkgdown
+
+jobs:
+  build-site:
+    runs-on: windows-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-PKSIM
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install rClr
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-rClr
+        with:
+          RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            rClr=local::./rClr_${{ inputs.RCLR_VERSION }}.zip
+            any::pkgdown
+            local::.
+            ospsuite.utils=github::Open-Systems-Pharmacology/OSPSuite.RUtils
+            tlf=github::Open-Systems-Pharmacology/TLF-Library
+            ospsuite=github::Open-Systems-Pharmacology/OSPSuite-R
+            ospsuite.parameteridentification=github::Open-Systems-Pharmacology/OSPSuite.ParameterIdentification
+          needs: website
+
+      - name: Build site
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        shell: Rscript {0}
+
+      - name: Upload Artifacts 🔺 # The project is then uploaded as an artifact named 'site'.
+        uses: actions/upload-artifact@v1
+        with:
+          name: docs
+          path: docs
+
+
+  upload-to-branch:
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+    needs: [pkgdown] # The second job must depend on the first one to complete before running and uses ubuntu-latest instead of windows.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Download Artifacts 🔻 # The built project is downloaded into the 'site' folder.
+        uses: actions/download-artifact@v1
+        with:
+          name: docs
+
+      - name: Deploy to GitHub pages 🚀
+        if: github.event_name != 'pull_request'
+        uses: JamesIves/github-pages-deploy-action@v4.4.1
+        with:
+          clean: false
+          branch: gh-pages
+          folder: docs
