@@ -3,6 +3,9 @@ description: 'based on r-lib/actions/setup-r-dependencies but with extra options
 author: 'Felix MIL'
 
 inputs:
+  RCLR_VERSION:
+    description: 'The version of rClr to install'
+    required: true
   extra-packages:
     description: |
       Extra packages to install defined as described in
@@ -26,5 +29,5 @@ runs:
           any::covr
           any::pkgdown
           local::.
-          rClr=?ignore
+          rClr=local::./rClr_${{ inputs.RCLR_VERSION }}.zip
           ${{ inputs.extra-packages }}

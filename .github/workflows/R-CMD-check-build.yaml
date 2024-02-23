@@ -39,6 +39,7 @@ jobs:
       - name: Install package dependencies
         uses: Felixmil/Workflows/.github/actions/install-package-deps@test-from-fork
         with:
+          RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
           extra-packages: ${{ inputs.extra-packages }}
 
       - name: Check Package

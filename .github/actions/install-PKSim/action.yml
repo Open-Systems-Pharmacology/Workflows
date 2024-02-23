@@ -7,6 +7,7 @@ runs:
   steps:
     - id: download-latest-pk-sim-build-archive
       run: |
+        # Download the PK-sim build archive
         # Define the URL of the PK-sim build archive
         $url = "https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop"
         # Define the location where you want to save the zip file
@@ -17,6 +18,7 @@ runs:
 
     - id: unzip-pk-sim-build-archive
       run: |
+        # Unzip the PK-sim build archive
         $zipPath = "${{ runner.workspace }}/setup.zip"
         $unzipPath = "${{ runner.workspace }}/unzipped"
         Expand-Archive -Path $zipPath -DestinationPath $unzipPath
@@ -24,6 +26,7 @@ runs:
 
     - id: install-pk-sim-msi
       run: |
+        # Install the PK-sim MSI
         $msiPath = Get-ChildItem -Path "${{ runner.workspace }}/unzipped" -Filter "*.msi" | Select-Object -First 1
         if ($msiPath) {
           Start-Process msiexec -ArgumentList "/i", $msiPath.FullName, "/quiet", "/qn", "/norestart" -Wait
