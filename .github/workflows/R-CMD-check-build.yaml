@@ -4,9 +4,6 @@ on:
       RCLR_VERSION:
         required: true
         type: 'string'
-    secrets:
-      GITHUB_TOKEN:
-        required: true
 
 name: R-CMD-check-build
 
