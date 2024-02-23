@@ -15,7 +15,7 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install PK-Sim
         uses: Felixmil/Workflows/.github/actions/install-PKSIM@test-from-fork
@@ -69,3 +69,8 @@ jobs:
         with:
           name: built_package
           path: ${{ runner.temp }}/built_package/*.zip
+
+      - name: Set Status Output
+        if: ${{ success() }}
+        id: set-status
+        run: echo "::set-output name=status::success"
