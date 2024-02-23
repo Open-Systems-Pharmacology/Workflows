@@ -5,7 +5,7 @@ author: 'Felix MIL'
 runs:
   using: "composite"
   steps:
-    - name: Download latest PK-sim build archive
+    - id: Download latest PK-sim build archive
       run: |
         # Define the URL of the PK-sim build archive
         $url = "https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop"
@@ -15,14 +15,14 @@ runs:
         Invoke-WebRequest -Uri $url -OutFile $outputPath
       shell: powershell
 
-    - name: Unzip PK-sim build archive
+    - id: Unzip PK-sim build archive
       run: |
         $zipPath = "${{ runner.workspace }}/setup.zip"
         $unzipPath = "${{ runner.workspace }}/unzipped"
         Expand-Archive -Path $zipPath -DestinationPath $unzipPath
       shell: powershell
 
-    - name: Install PK-sim MSI
+    - id: Install PK-sim MSI
       run: |
         $msiPath = Get-ChildItem -Path "${{ runner.workspace }}/unzipped" -Filter "*.msi" | Select-Object -First 1
         if ($msiPath) {

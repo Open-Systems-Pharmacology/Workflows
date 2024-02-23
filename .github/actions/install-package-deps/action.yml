@@ -17,7 +17,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install dependencies
+    - id: Install dependencies
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
         extra-packages: |
@@ -26,4 +26,5 @@ runs:
           any::covr
           any::pkgdown
           local::.
+          rClr=?ignore
           ${{ inputs.extra-packages }}
