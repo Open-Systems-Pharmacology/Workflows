@@ -35,7 +35,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            rClr=local::./rClr_${{ env.RCLR_VERSION }}.zip
+            rClr=local::./rClr_${{ inputs.RCLR_VERSION }}.zip
             any::covr
             local::.
             ospsuite.utils=github::Open-Systems-Pharmacology/OSPSuite.RUtils
