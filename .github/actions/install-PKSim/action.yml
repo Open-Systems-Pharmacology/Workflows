@@ -2,6 +2,13 @@ name: 'Install PK-Sim'
 description: 'Setup a PK-Sim installation for Windows machine'
 author: 'Felix MIL'
 
+inputs:
+  pksim-url:
+    required: false
+    type: string
+    default: 'https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop&pr=false'
+
+
 runs:
   using: "composite"
   steps:
@@ -9,7 +16,7 @@ runs:
       run: |
         # Download the PK-sim build archive
         # Define the URL of the PK-sim build archive
-        $url = "https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop"
+        $url = ${{ inputs.pksim-url }}
         # Define the location where you want to save the zip file
         $outputPath = "${{ runner.workspace }}/setup.zip"
         # Download the PK-sim build archive
