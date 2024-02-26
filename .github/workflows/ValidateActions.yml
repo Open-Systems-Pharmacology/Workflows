@@ -20,4 +20,4 @@ jobs:
 
       - name: Lint Actions
         run: |
-          find -type f \( -iname \*.yaml -o -iname \*.yml \) | xargs -I {} action-validator --verbose {}
+          find .github -type f \( -iname \*.yaml -o -iname \*.yml \) | xargs -I {} action-validator --verbose {}
