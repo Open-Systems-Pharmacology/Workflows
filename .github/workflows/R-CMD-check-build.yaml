@@ -7,6 +7,10 @@ on:
       extra-packages:
         required: false
         type: 'string'
+      pksim-url:
+        required: false
+        type: 'string'
+
 
 name: R-CMD-check-build
 
@@ -22,6 +26,8 @@ jobs:
 
       - name: Install PK-Sim
         uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-PKSIM@main
+        with:
+          pksim-url: ${{ inputs.pksim-url }}
 
       - name: Setup Pandoc
         uses: r-lib/actions/setup-pandoc@v2
