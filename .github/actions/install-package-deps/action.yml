@@ -3,14 +3,20 @@ description: 'based on r-lib/actions/setup-r-dependencies but with extra options
 author: 'Felix MIL'
 
 inputs:
-  RCLR_VERSION:
-    description: 'The version of rClr to install'
+  install-rClr:
+    description: 'Wether to install rClr'
     required: true
+    default: 'false'
+  rClr-version:
+    description: 'The version of rClr to install'
+    required: false
+    default: '0.9.2'
   extra-packages:
     description: |
       Extra packages to install defined as described in
       https://github.com/r-lib/actions/tree/v2-branch/setup-r-dependencies and
       https://r-lib.github.io/pkgdepends/reference/pkg_refs.html#github-packages-github-'
+    required: false
     default: |
       ospsuite.utils=github::Open-Systems-Pharmacology/OSPSuite.RUtils
       tlf=github::Open-Systems-Pharmacology/TLF-Library
@@ -20,7 +26,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - id: download-rClr
+      if: ${{ inputs.install-rclr }}
+      run: |
+        RCLR_URL <- "https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v${{ inputs.rClr-version }}/rClr_${{ inputs.rClr-version }}.zip"
+        download.file(RCLR_URL, "rClr_${{ inputs.rClr-version }}.zip")
+      shell: Rscript {0}
     - id: install-package-dependencies
+      if: ${{ inputs.install-rClr }}
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
         extra-packages: |
@@ -29,5 +42,16 @@ runs:
           any::covr
           any::pkgdown
           local::.
-          rClr=local::./rClr_${{ inputs.RCLR_VERSION }}.zip
+          rClr=local::./rClr_${{ inputs.rClr-version }}.zip
+          ${{ inputs.extra-packages }}
+    - id: install-package-dependencies
+      if: ${{ !inputs.install-rClr }}
+      uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        extra-packages: |
+          any::rcmdcheck
+          any::devtools
+          any::covr
+          any::pkgdown
+          local::.
           ${{ inputs.extra-packages }}

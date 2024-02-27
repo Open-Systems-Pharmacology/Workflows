@@ -1,12 +1,25 @@
 on:
   workflow_call:
     inputs:
-      RCLR_VERSION:
+      install-pksim:
+        required: false
+        type: boolean
+      pksim-url:
+        required: false
+        type: string
+      install-pandoc:
+        required: false
+        type: boolean
+        default: true
+      install-rclr:
+        required: false
+        type: boolean
+      rClr-version:
         required: true
-        type: 'string'
+        type: string
       extra-packages:
         required: false
-        type: 'string'
+        type: string
 
 name: pkgdown
 
@@ -20,24 +33,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install PK-Sim
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-PKSIM@main
-
-      - uses: r-lib/actions/setup-pandoc@v2
-
-      - uses: r-lib/actions/setup-r@v2
+      - name: Setup R Environment
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-R-environment@main
         with:
-          use-public-rspm: true
-
-      - name: get rClr
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/get-rClr@main
-        with:
-          RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
-
-      - name: Install package dependencies
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-package-deps@main
-        with:
-          RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
+          install-pksim: ${{ inputs.install-pksim }}
+          pksim-url: ${{ inputs.pksim-url }}
+          install-pandoc: ${{ inputs.install-pandoc }}
+          install-rclr: ${{ inputs.install-rclr }}
+          rClr-version: ${{ inputs.rClr-version }}
           extra-packages: ${{ inputs.extra-packages }}
 
       - name: Build site
