@@ -6,7 +6,7 @@ inputs:
   install-rClr:
     description: 'Wether to install rClr'
     required: true
-    default: false
+    default: 'false'
   rClr-version:
     description: 'The version of rClr to install'
     required: false
