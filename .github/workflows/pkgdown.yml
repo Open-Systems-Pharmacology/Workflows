@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install PK-Sim
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-PKSIM
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-PKSIM@main
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -30,12 +30,12 @@ jobs:
           use-public-rspm: true
 
       - name: get rClr
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/get-rClr
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/get-rClr@main
         with:
           RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
 
       - name: Install package dependencies
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-package-deps
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/install-package-deps@main
         with:
           RCLR_VERSION: ${{ inputs.RCLR_VERSION }}
           extra-packages: ${{ inputs.extra-packages }}
