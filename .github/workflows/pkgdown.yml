@@ -4,11 +4,9 @@ on:
       install-pksim:
         required: false
         type: boolean
-        default: true
       pksim-url:
         required: false
         type: string
-        default: 'https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop&pr=false'
       install-pandoc:
         required: false
         type: boolean
@@ -16,19 +14,12 @@ on:
       install-rclr:
         required: false
         type: boolean
-        default: true
       rClr-version:
         required: true
         type: string
-        default: '0.9.2'
       extra-packages:
         required: false
         type: string
-        default: |
-          ospsuite.utils=github::Open-Systems-Pharmacology/OSPSuite.RUtils
-          tlf=github::Open-Systems-Pharmacology/TLF-Library
-          ospsuite=github::Open-Systems-Pharmacology/OSPSuite-R
-          ospsuite.parameteridentification=github::Open-Systems-Pharmacology/OSPSuite.ParameterIdentification
 
 name: pkgdown
 
