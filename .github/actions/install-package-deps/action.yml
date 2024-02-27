@@ -32,7 +32,7 @@ runs:
         RCLR_URL <- "https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v${{ inputs.rClr-version }}/rClr_${{ inputs.rClr-version }}.zip"
         download.file(RCLR_URL, "rClr_${{ inputs.rClr-version }}.zip")
       shell: Rscript {0}
-    - id: install-package-dependencies
+    - id: install-package-dependencies-with-rClr
       if: ${{ inputs.install-rClr }}
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
@@ -44,7 +44,7 @@ runs:
           local::.
           rClr=local::./rClr_${{ inputs.rClr-version }}.zip
           ${{ inputs.extra-packages }}
-    - id: install-package-dependencies
+    - id: install-package-dependencies-without-rClr
       if: ${{ !inputs.install-rClr }}
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
