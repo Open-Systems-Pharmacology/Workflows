@@ -3,22 +3,22 @@ on:
     inputs:
       install-pksim:
         required: false
-        type: 'boolean'
+        type: boolean
       pksim-url:
         required: false
-        type: 'string'
+        type: string
       install-pandoc:
         required: false
-        type: 'boolean'
+        type: boolean
       install-rclr:
         required: false
-        type: 'boolean'
+        type: boolean
       rClr-version:
         required: true
-        type: 'string'
+        type: string
       extra-packages:
         required: false
-        type: 'string'
+        type: string
 
 name: test-pkg-and-coverage
 
