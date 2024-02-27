@@ -5,8 +5,7 @@ author: 'Felix MIL'
 inputs:
   pksim-url:
     description: 'The URL of the PK-Sim build archive'
-    required: true
-    default: 'https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop&pr=false'
+    required: false
 
 
 runs:

@@ -4,19 +4,15 @@ author: 'Felix MIL'
 
 inputs:
   install-pksim:
-    required: false
-    default: true
+    required: true
   pksim-url:
     required: false
   install-pandoc:
-    required: false
-    default: true
+    required: true
   install-rclr:
-    required: false
-    default: true
+    required: true
   rClr-version:
     required: false
-    default: '0.9.2'
   extra-packages:
     required: false
 

@@ -8,18 +8,13 @@ inputs:
     required: true
   rClr-version:
     description: 'The version of rClr to install'
-    required: true
+    required: false
   extra-packages:
     description: |
       Extra packages to install defined as described in
       https://github.com/r-lib/actions/tree/v2-branch/setup-r-dependencies and
       https://r-lib.github.io/pkgdepends/reference/pkg_refs.html#github-packages-github-'
     required: false
-    default: |
-      ospsuite.utils=github::Open-Systems-Pharmacology/OSPSuite.RUtils
-      tlf=github::Open-Systems-Pharmacology/TLF-Library
-      ospsuite=github::Open-Systems-Pharmacology/OSPSuite-R
-      ospsuite.parameteridentification=github::Open-Systems-Pharmacology/OSPSuite.ParameterIdentification
 
 runs:
   using: "composite"
