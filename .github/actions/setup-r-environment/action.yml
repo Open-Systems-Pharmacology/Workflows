@@ -6,15 +6,15 @@ inputs:
   install-pksim:
     required: true
   pksim-url:
-    required: false
+    required: true
   install-pandoc:
     required: true
   install-rclr:
     required: true
   rClr-version:
-    required: false
+    required: true
   extra-packages:
-    required: false
+    required: true
 
 runs:
   using: "composite"
