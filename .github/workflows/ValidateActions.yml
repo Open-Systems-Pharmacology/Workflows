@@ -1,0 +1,23 @@
+name: Validate GitHub Actions #s. https://github.com/mpalmer/action-validator?tab=readme-ov-file
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install action-validator with asdf
+        uses: asdf-vm/actions/install@v3
+        with:
+          tool_versions: |
+            action-validator 0.5.1
+
+      - name: Lint Actions
+        run: |
+          find .github -type f \( -iname \*.yaml -o -iname \*.yml \) | xargs -I {} action-validator --verbose {}
