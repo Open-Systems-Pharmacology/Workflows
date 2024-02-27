@@ -3,16 +3,16 @@ on:
     inputs:
       install-pksim:
         required: false
-        type: 'string'
+        type: 'boolean'
       pksim-url:
         required: false
         type: 'string'
       install-pandoc:
         required: false
-        type: 'string'
+        type: 'boolean'
       install-rclr:
         required: false
-        type: 'string'
+        type: 'boolean'
       rClr-version:
         required: true
         type: 'string'
