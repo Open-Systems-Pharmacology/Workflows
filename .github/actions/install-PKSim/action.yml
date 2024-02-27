@@ -5,7 +5,6 @@ author: 'Felix MIL'
 inputs:
   pksim-url:
     required: false
-    type: string
     default: 'https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop&pr=false'
 
 
