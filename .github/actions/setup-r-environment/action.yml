@@ -5,8 +5,8 @@ author: 'Felix MIL'
 inputs:
   install-pksim:
     description: 'Wether to install PK-Sim'
-    default: false
     required: true
+    default: 'false'
   pksim-url:
     description: 'The URL of the PK-Sim build archive'
     required: false
@@ -14,11 +14,11 @@ inputs:
   install-pandoc:
     description: 'Wether to install pandoc'
     required: false
-    default: false
+    default: 'false'
   install-rclr:
     description: 'Wether to install rClr'
     required: false
-    default: false
+    default: 'false'
   rClr-version:
     description: 'The version of rClr to install'
     required: false
