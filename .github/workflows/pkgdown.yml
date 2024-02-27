@@ -56,7 +56,7 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: write
-    needs: [pkgdown] # The second job must depend on the first one to complete before running and uses ubuntu-latest instead of windows.
+    needs: [build-site] # The second job must depend on the first one to complete before running and uses ubuntu-latest instead of windows.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
