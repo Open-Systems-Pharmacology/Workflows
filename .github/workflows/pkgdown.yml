@@ -15,7 +15,7 @@ on:
         required: false
         type: boolean
       rClr-version:
-        required: true
+        required: false
         type: string
       extra-packages:
         required: false
