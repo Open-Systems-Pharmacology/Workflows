@@ -6,21 +6,18 @@ inputs:
   install-pksim:
     description: 'Wether to install PK-Sim'
     required: true
-    default: 'false'
   pksim-url:
     description: 'The URL of the PK-Sim build archive'
-    required: false
+    required: true
   install-pandoc:
     description: 'Wether to install pandoc'
-    required: false
-    default: 'false'
+    required: true
   install-rclr:
     description: 'Wether to install rClr'
-    required: false
-    default: 'false'
+    required: true
   rClr-version:
     description: 'The version of rClr to install'
-    required: false
+    required: true
   extra-packages:
     description: |
       Extra packages to install defined as described in

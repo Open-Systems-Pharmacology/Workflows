@@ -5,8 +5,7 @@ author: 'Felix MIL'
 inputs:
   pksim-url:
     description: 'The URL of the PK-Sim build archive'
-    required: false
-    default: 'https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop&pr=false'
+    required: true
 
 
 runs:
@@ -16,11 +15,7 @@ runs:
       run: |
         # Download the PK-sim build archive
         # Define the URL of the PK-sim build archive
-        $url = ${{ inputs.pksim-url }}
-        # Retrieve default path to pksim if no input was provided
-        if ($url -eq "") {
-          $url = ${{ inputs.pksim-url.default }}
-        }
+        $url = "${{ inputs.pksim-url }}"
         # Define the location where you want to save the zip file
         $outputPath = "${{ runner.workspace }}/setup.zip"
         # Download the PK-sim build archive
