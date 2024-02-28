@@ -5,7 +5,7 @@ author: 'Felix MIL'
 inputs:
   pksim-url:
     description: 'The URL of the PK-Sim build archive'
-    required: false
+    required: true
 
 
 runs:
@@ -15,7 +15,7 @@ runs:
       run: |
         # Download the PK-sim build archive
         # Define the URL of the PK-sim build archive
-        $url = ${{ inputs.pksim-url }}
+        $url = "${{ inputs.pksim-url }}"
         # Define the location where you want to save the zip file
         $outputPath = "${{ runner.workspace }}/setup.zip"
         # Download the PK-sim build archive

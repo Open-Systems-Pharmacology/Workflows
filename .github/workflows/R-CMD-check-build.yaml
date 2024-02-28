@@ -2,22 +2,21 @@ on:
   workflow_call:
     inputs:
       install-pksim:
-        required: false
         type: boolean
+        default: false
       pksim-url:
-        required: false
         type: string
+        default: 'https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop&pr=false'
       install-pandoc:
-        required: false
         type: boolean
+        default: false
       install-rclr:
-        required: false
         type: boolean
+        default: false
       rClr-version:
-        required: false
         type: string
+        default: '0.9.2'
       extra-packages:
-        required: false
         type: string
 
 name: R-CMD-check-build
