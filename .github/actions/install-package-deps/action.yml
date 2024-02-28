@@ -6,7 +6,6 @@ inputs:
   install-rClr:
     description: 'Wether to install rClr'
     required: true
-    default: 'false'
   rClr-version:
     description: 'The version of rClr to install'
     required: false
@@ -29,8 +28,21 @@ runs:
     - id: download-rClr
       if: ${{ inputs.install-rclr }}
       run: |
-        RCLR_URL <- "https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v${{ inputs.rClr-version }}/rClr_${{ inputs.rClr-version }}.zip"
-        download.file(RCLR_URL, "rClr_${{ inputs.rClr-version }}.zip")
+        rClr_version <- ${{ inputs.rClr-version }}
+        
+        if(rClr_version == ""){
+          rClr_version <- ${{ inputs.rClr-version.default }}
+        }
+        
+        url <- paste0("https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v",
+                          rClr_version,
+                          "/rClr_",
+                          rClr_version,
+                          ".zip")
+                          
+        download.file(url, paste0("rClr_",
+                                       rClr_version,
+                                       ".zip")
       shell: Rscript {0}
     - id: install-package-dependencies-with-rClr
       if: ${{ inputs.install-rClr }}

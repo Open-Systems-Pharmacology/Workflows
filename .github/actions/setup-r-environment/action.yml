@@ -10,7 +10,6 @@ inputs:
   pksim-url:
     description: 'The URL of the PK-Sim build archive'
     required: false
-    default: 'https://ci.appveyor.com/api/projects/open-systems-pharmacology-ci/pk-sim/artifacts/setup.zip?branch=develop&pr=false'
   install-pandoc:
     description: 'Wether to install pandoc'
     required: false
