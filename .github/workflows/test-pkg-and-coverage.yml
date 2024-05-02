@@ -20,7 +20,7 @@ on:
         type: string
     secrets:
       CODECOV_TOKEN:
-        type: string
+        description: 'Token for codecov.io'
         required: false
 
 name: test-pkg-and-coverage
