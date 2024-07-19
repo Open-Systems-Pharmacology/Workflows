@@ -6,13 +6,13 @@ name: bump-dev-version
 on:
   workflow_call:
     inputs:
-        app-id:
+      app-id:
+        type: string
+        required: true
+    secrets:
+      private-key:
           type: string
           required: true
-    secrets:
-        private-key:
-            type: string
-            required: true
 
 jobs:
   bump-dev-version:
