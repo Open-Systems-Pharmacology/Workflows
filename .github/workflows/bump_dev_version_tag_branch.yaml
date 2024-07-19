@@ -12,7 +12,7 @@ on:
     secrets:
         private-key:
             type: string
-            require: true
+            required: true
 
 jobs:
   bump-dev-version:
