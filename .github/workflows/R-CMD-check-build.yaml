@@ -56,7 +56,7 @@ jobs:
 
       - name: Get package package and R versions and store in environment
         run: |
-          echo "PKG_VERSION=$(Rscript -e 'desc::desc_get_version()')" >> $GITHUB_ENV
+          echo "PKG_VERSION=$(Rscript -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
           echo "R_VERSION=$(Rscript -e 'cat(R.version$major, R.version$minor, sep = ".")')" >> $GITHUB_ENV
         shell: bash
 
