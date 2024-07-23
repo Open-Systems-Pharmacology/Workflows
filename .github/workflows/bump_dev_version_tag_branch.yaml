@@ -62,3 +62,4 @@ jobs:
           default_author: github_actions
           add: 'DESCRIPTION'
           tag: 'v${{ env.PKG_VERSION }}'
+          tag_push: '--force'
