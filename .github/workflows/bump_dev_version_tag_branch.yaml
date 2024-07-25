@@ -52,7 +52,7 @@ jobs:
 
       - name: Get package version from DESCRIPTION file and set as environment variable
         run: |
-            echo "PKG_VERSION=$(Rscript -e 'desc::desc_get_version()')" >> $GITHUB_ENV
+            echo "PKG_VERSION=$(Rscript -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
         shell: bash
 
       - uses: EndBug/add-and-commit@v9
