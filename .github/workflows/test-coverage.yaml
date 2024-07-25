@@ -2,7 +2,10 @@
 
 on:
     workflow_call:
-  
+      secrets:
+        CODECOV_TOKEN:
+            required: true
+        
 name: test-coverage
 
 permissions: read-all
