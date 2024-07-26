@@ -54,7 +54,7 @@ jobs:
           devtools::build(binary = TRUE, path = output_dir)
         shell: Rscript {0}
 
-      - name: Get package package and R versions and store in environment
+      - name: Get package name, version and R versions and store in environment
         run: |
           echo "PKG_NAME=$(Rscript -e 'cat(pkgload::pkg_name())')" >>  $GITHUB_ENV
           echo "PKG_VERSION=$(Rscript -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
