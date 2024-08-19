@@ -54,7 +54,7 @@ jobs:
           output_dir <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "built_package")
           dir.create(output_dir)
           # first run build() to get a bundle package (that includes rendered vignettes), then create binary.
-          devtools::build(devtools::build(), binary = TRUE, path = output_dir)
+          devtools::build(devtools::build(), binary = TRUE, path = output_dir, , args=c("--preclean", "--install-tests"))
         shell: Rscript {0}
 
       - name: Get package name, version and R versions and store in environment
