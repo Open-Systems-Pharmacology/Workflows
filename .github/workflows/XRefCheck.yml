@@ -20,4 +20,4 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: serokell/xrefcheck-action@v1
       with:
-        xrefcheck-args: --mode local-only --ignored ${{ inputs.ignored-folders }}
+        xrefcheck-args: --mode local-only --ignore ${{ inputs.ignored-folders }}
