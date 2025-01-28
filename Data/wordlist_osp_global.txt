@@ -3461,3 +3461,14 @@ Thayssen
 Urae
 Zundler
 Ieiri
+Anneke
+DBI
+dplyr
+Himstedt
+magrittr
+openxlsx
+piecewise
+programmatically
+RSQLite
+sqlite
+tibble
