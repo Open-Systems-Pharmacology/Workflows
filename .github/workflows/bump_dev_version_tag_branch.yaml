@@ -59,6 +59,8 @@ jobs:
   bump-dev-version:
     needs: detect-changes
     if: needs.detect-changes.outputs.run_next_job == 'true'
+    concurrency: #prevent concurrent runs
+      group: ${{ github.workflow }}
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
