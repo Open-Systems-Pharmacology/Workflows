@@ -45,9 +45,9 @@ jobs:
         run: | #echo a notice with a list of changed files
           list=''
           for file in ${ALL_CHANGED_FILES}; do
-            list+="\t -$file,\n"
+            list+="\t- $file,\n"
           done 
-          echo -e "::notice::Detected changes in files, Version will be bumped. Changes\n$list"
+          echo -e "::notice::Detected changes in files, Version will be bumped. List of changes:\n$list"
           echo "run_next_job=true" >> $GITHUB_OUTPUT
 
       - name: No changes
