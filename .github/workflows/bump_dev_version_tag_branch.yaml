@@ -1,5 +1,5 @@
 # This reusable workflow will, if triggered by a merge:
-#  - Bump version if the current version is development (x.y.z.9000+) & if changes are detected on R files
+#  - Bump version if the current version is development (x.y.z.9000+) & if functionnal changes are detected.
 #  - Tag the target branch with version number
 name: bump-dev-version
 
@@ -53,7 +53,7 @@ jobs:
       - name: No changes
         if: steps.changes.outputs.any_changed != 'true'
         run: |
-          echo "No changes detected on R files or inst/ folder, version will not be bumped"
+          echo "No functionalchanges detected, version will not be bumped"
           echo "run_next_job=false" >> $GITHUB_OUTPUT
 
   bump-dev-version:
