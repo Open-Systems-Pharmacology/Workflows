@@ -33,14 +33,15 @@ jobs:
             inst/**
 
       - name: Changes detected
+        id: set_output
         if: steps.changes.outputs.any_changed == 'true'
-        run: |
-          echo "::set-output name=run_next_job::true"
+        run: echo "run_next_job=true" >> $GITHUB_OUTPUT
 
       - name: No changes
         if: steps.changes.outputs.any_changed != 'true'
         run: |
           echo "No changes detected on R files or inst/ folder, version will not be bumped"
+          echo "run_next_job=false" >> $GITHUB_OUTPUT
 
   bump-dev-version:
     needs: detect-changes
