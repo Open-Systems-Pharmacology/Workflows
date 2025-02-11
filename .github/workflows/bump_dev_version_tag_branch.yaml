@@ -31,8 +31,11 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: |
+            NAMESPACE
             R/**
             inst/**
+            man/**
+            vignettes/**
 
       - name: Changes detected
         id: set_output
