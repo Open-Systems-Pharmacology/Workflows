@@ -1,5 +1,5 @@
 # This reusable workflow will, if triggered by a merge:
-#  - Bump version if the current version is development (x.y.z.9000+)
+#  - Bump version if the current version is development (x.y.z.9000+) & if changes are detected on R files
 #  - Tag the target branch with version number
 name: bump-dev-version
 
@@ -14,8 +14,39 @@ on:
           required: true
 
 jobs:
-  bump-dev-version:
+  detect-changes:
     if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      run_next_job: ${{ steps.set_output.outputs.run_next_job }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.private-key }}
+
+      - name: Detect changes
+        id: changes
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            R/**
+            inst/**
+
+      - name: Set output
+        id: set_output
+        if: steps.changes.outputs.any_changed == 'true'
+        run: |
+          echo "::set-output name=run_next_job::true"
+
+      - name: No changes
+        if: steps.changes.outputs.any_changed != 'true'
+        run: |
+          echo "No changes detected on R files or inst/ folder, version will not be bumped"
+
+  bump-dev-version:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.run_next_job == 'true'
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
