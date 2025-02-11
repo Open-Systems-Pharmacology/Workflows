@@ -42,12 +42,9 @@ jobs:
         if: steps.changes.outputs.any_changed == 'true'
         env:
           ALL_CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
-        run: |
-          echo "Detected changes:"
-          for file in ${ALL_CHANGED_FILES}; do
-            echo -e "\t - $file"
-          done
-          echo "Changes detected on R files or inst/ folder, version will be bumped"
+        run: | #echo a notice with a list of changed files
+          $list = $env:ALL_CHANGED_FILES.Split([Environment]::NewLine)
+          echo -e "::notice title=Detected changes::\n $list \n Version will be bumped"
           echo "run_next_job=true" >> $GITHUB_OUTPUT
 
       - name: No changes
