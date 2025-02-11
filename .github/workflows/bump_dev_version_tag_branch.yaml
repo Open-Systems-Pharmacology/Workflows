@@ -16,6 +16,8 @@ on:
 jobs:
   detect-changes:
     if: github.event_name != 'pull_request'
+    concurrency: #prevent concurrent runs
+      group: ${{ github.workflow }}
     runs-on: ubuntu-latest
     outputs:
       run_next_job: ${{ steps.set_output.outputs.run_next_job }}
