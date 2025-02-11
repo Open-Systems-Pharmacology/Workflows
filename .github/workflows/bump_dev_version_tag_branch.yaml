@@ -35,7 +35,14 @@ jobs:
       - name: Changes detected
         id: set_output
         if: steps.changes.outputs.any_changed == 'true'
-        run: echo "run_next_job=true" >> $GITHUB_OUTPUT
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
+        run: |
+          echo "Changes detected on R files or inst/ folder, version will be bumped"
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file was changed"
+          done
+          echo "run_next_job=true" >> $GITHUB_OUTPUT
 
       - name: No changes
         if: steps.changes.outputs.any_changed != 'true'
