@@ -31,11 +31,16 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: |
+            README.md
             NAMESPACE
-            R/**
+            DESCRIPTION
+            NEWS.md
+            .Rbuildignore
+            **.R
+            tests/**
+            vignettes/**
             inst/**
             man/**
-            vignettes/**
 
       - name: Changes detected
         id: set_output
