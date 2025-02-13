@@ -1,5 +1,5 @@
 # This reusable workflow will, if triggered by a merge:
-#  - Bump version if the current version is development (x.y.z.9000+)
+#  - Bump version if the current version is development (x.y.z.9000+) & if functionnal changes are detected.
 #  - Tag the target branch with version number
 name: bump-dev-version
 
@@ -14,8 +14,58 @@ on:
           required: true
 
 jobs:
-  bump-dev-version:
+  detect-changes:
     if: github.event_name != 'pull_request'
+    concurrency: #prevent concurrent runs
+      group: ${{ github.workflow }}
+    runs-on: ubuntu-latest
+    outputs:
+      run_next_job: ${{ steps.set_output.outputs.run_next_job }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        id: changes
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            README.md
+            NAMESPACE
+            DESCRIPTION
+            NEWS.md
+            .Rbuildignore
+            **.R
+            tests/**
+            vignettes/**
+            inst/**
+            man/**
+
+      - name: Changes detected
+        id: set_output
+        if: steps.changes.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
+        run: | #echo a notice with a list of changed files
+          list=''
+          for file in ${ALL_CHANGED_FILES}; do
+            list+="\t- $file,\n"
+          done 
+          echo -e "::notice::Detected changes in files, Version will be bumped. List of changes:\n$list"
+          echo "run_next_job=true" >> $GITHUB_OUTPUT
+
+      - name: No changes
+        if: steps.changes.outputs.any_changed != 'true'
+        run: |
+          echo "No functionalchanges detected, version will not be bumped"
+          echo "run_next_job=false" >> $GITHUB_OUTPUT
+
+  bump-dev-version:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.run_next_job == 'true'
+    concurrency: #prevent concurrent runs
+      group: ${{ github.workflow }}
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
