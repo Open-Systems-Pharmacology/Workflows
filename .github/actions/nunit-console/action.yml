@@ -1,0 +1,20 @@
+name: 'Nunit console runner'
+description: 'Install and run a test batch with Nunit'
+author: 'Robert McIntosh'
+
+inputs:
+  assemblies:
+    description: 'The assembly glob to run tests against'
+    required: true
+
+
+runs:
+  using: "composite"
+  steps:
+    - id: install-nunit
+      run: nuget install NUnit.ConsoleRunner -Version 3.19.2 -DirectDownload -OutputDirectory .
+      shell: powershell
+
+    - id: run-tests
+      run: ./NUnit.ConsoleRunner.3.19.2/tools/nunit3-console.exe ${{ inputs.assemblies }}
+      shell: powershell
