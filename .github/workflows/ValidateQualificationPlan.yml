@@ -19,6 +19,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Extract and download schema
         run: |
+          sudo apt-get remove -y needrestart
           sudo apt-get install -y php-json-schema 
           validate-json ${{ inputs.qualification-plan }} --dump-schema-url | xargs wget
       - name: Validate JSON with the referenced schema
