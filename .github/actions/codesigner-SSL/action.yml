@@ -21,7 +21,7 @@ inputs:
     required: false
     default: "false"
   jvm_max_memory:
-    description: "Maximumx JVM heap size."
+    description: "Maximum JVM heap size."
     required: false
     default: "1024M"
   signing_method:
