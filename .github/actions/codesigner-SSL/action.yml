@@ -1,0 +1,91 @@
+name: "codesigner"
+description: "GitHub Action for CodeSigner by SSL.com"
+
+inputs:
+  file_path:
+    description: "Path of the code object to be signed. Supported file types: acm, ax, bin, cab, cpl, dll, drv, efi, exe, mui, ocx, scr, sys, tsp, msi, ps1, ps1xml, js, vbs, wsf, jar"
+    required: true
+  output_dir_path:
+    description: "Directory where the signed code object will be written (leave empty if override is set to true)."
+    required: false
+  malware_block:
+    description: "Scans your file for possible malware to prevent code compromise and prevents signing code if malware is detected."
+    required: false
+    default: "false"
+  override:
+    description: "Override the input file after signing if this argument is set to true and no output_dir_path argument was passed."
+    required: false
+    default: "true"
+  clean_logs:
+    description: "Clean log files after code signing operations."
+    required: false
+    default: "false"
+  jvm_max_memory:
+    description: "Maximumx JVM heap size."
+    required: false
+    default: "1024M"
+  signing_method:
+    description: "Code signing method. Default is v1. Supported values: v1, v2."
+    required: false
+    default: "v1"
+  ES_USERNAME:
+    description: "SSL.com account username."
+    required: true
+  ES_PASSWORD:
+    description: "SSL.com account password."
+    required: true
+  ES_CREDENTIAL_ID:
+    description: "Credential ID for signing certificate."
+    required: true
+  ES_TOTP_SECRET:
+    description: "OAuth TOTP Secret."
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+      - name: Sign Artifact with CodeSignTool
+        uses: sslcom/esigner-codesign@v1.3.1
+        with:
+          # CodeSignTool Commands:
+          # - get_credential_ids: Output the list of eSigner credential IDs associated with a particular user.
+          # - credential_info: Output key and certificate information related to a credential ID.
+          # - sign: Sign and timestamp code object.
+          # - batch_sign: Sign and timestamp multiple code objects with one OTP.
+          # - hash: Pre-compute hash(es) for later use with batch_hash_sign command.
+          # - batch_sign_hash: Sign hash(es) pre-computed with hash command.
+          command: sign
+
+          # SSL.com account username.
+          username: ${{inputs.ES_USERNAME}}
+
+          # SSL.com account password.
+          password: ${{inputs.ES_PASSWORD}}
+
+          # Credential ID for signing certificate.
+          credential_id: ${{inputs.ES_CREDENTIAL_ID}}
+
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
+          totp_secret: ${{inputs.ES_TOTP_SECRET}}
+
+          # Path of the code object to be signed.
+          # Supported file types: acm, ax, bin, cab, cpl, dll, drv, efi, exe, mui, ocx, scr, sys, tsp, msi, ps1, ps1xml, js, vbs, wsf, jar
+          file_path: ${{ inputs.file_path }}
+
+          # Directory where the signed code object will be written.
+          output_path: ${{ inputs.output_dir_path }}
+
+          # Scans your file for possible malware to prevent code compromise and prevents signing code if malware is detected.
+          malware_block: ${{ inputs.malware_block }}
+    
+          # Override the input file after signing if this argument is set to true and no output_path argument was passed.
+          override: ${{ inputs.override }}
+    
+          # Clean log files after code signing operations.
+          clean_logs: ${{ inputs.clean_logs }}
+
+          # Maximumx JVM heap size.
+          jvm_max_memory: ${{ inputs.jvm_max_memory }}
+
+          # Code signing method. Default is v1. Supported values: v1, v2.
+          signing_method: ${{ inputs.signing_method }}
