@@ -28,18 +28,6 @@ inputs:
     description: "Code signing method. Default is v1. Supported values: v1, v2."
     required: false
     default: "v1"
-  ES_USERNAME:
-    description: "SSL.com account username."
-    required: true
-  ES_PASSWORD:
-    description: "SSL.com account password."
-    required: true
-  ES_CREDENTIAL_ID:
-    description: "Credential ID for signing certificate."
-    required: true
-  ES_TOTP_SECRET:
-    description: "OAuth TOTP Secret."
-    required: true
 
 runs:
   using: "composite"
@@ -57,16 +45,16 @@ runs:
           command: sign
 
           # SSL.com account username.
-          username: ${{inputs.ES_USERNAME}}
+          username: ${{env.ES_USERNAME}}
 
           # SSL.com account password.
-          password: ${{inputs.ES_PASSWORD}}
+          password: ${{env.ES_PASSWORD}}
 
           # Credential ID for signing certificate.
-          credential_id: ${{inputs.ES_CREDENTIAL_ID}}
+          credential_id: ${{env.ES_CREDENTIAL_ID}}
 
           # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
-          totp_secret: ${{inputs.ES_TOTP_SECRET}}
+          totp_secret: ${{env.ES_TOTP_SECRET}}
 
           # Path of the code object to be signed.
           # Supported file types: acm, ax, bin, cab, cpl, dll, drv, efi, exe, mui, ocx, scr, sys, tsp, msi, ps1, ps1xml, js, vbs, wsf, jar
