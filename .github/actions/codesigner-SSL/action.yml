@@ -72,7 +72,7 @@ runs:
           # Clean log files after code signing operations.
           clean_logs: ${{ inputs.clean_logs }}
 
-          # Maximumx JVM heap size.
+          # Maximum JVM heap size.
           jvm_max_memory: ${{ inputs.jvm_max_memory }}
 
           # Code signing method. Default is v1. Supported values: v1, v2.
