@@ -1,6 +1,8 @@
 # Setup Qualification Environment
 
-Install OSPSuite tools and Qualification Framework based on csv file input
+Install OSPSuite tools and Qualification Framework based on csv file input.
+
+Note that this action also installs `Pandoc` and `chromehtml2pdf` allowing conversion of the reports into pdf.
 
 ## Usage
 
@@ -9,11 +11,10 @@ Install OSPSuite tools and Qualification Framework based on csv file input
   uses: pchelle/osp-actions/setup-qualification-environment@main
   with:
     tools-path: tools.csv
-    from-cache: true
 ```
 
 > [!TIP]
-> To view and download a template for `tools.csv`, click on the following link [&#128279;](../tools.csv).
+> To view and download a template for `tools.csv`, click on the following link [&#128279;](https://github.com/pchelle/osp-actions/blob/main/tools.csv).
 > 
 > Then, update and add the file to your repository.
 
@@ -22,10 +23,6 @@ Install OSPSuite tools and Qualification Framework based on csv file input
 This action requires:
 
 - __`tools-path`__: the path of a csv file defining the tools and versions to install
-
-This action can optionally use:
-
-- __`install-pandoc`__: boolean defining to install Pandoc in the environment
 
 The csv file in __`tools-path`__ indicates software and software versions to be installed in environment before running the qualifications of the models.
 If a link is defined in the `URL` column, the installation will use the software from the link as is instead of searching from the version.

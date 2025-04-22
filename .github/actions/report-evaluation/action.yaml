@@ -20,13 +20,13 @@ inputs:
     description: 'URL of additional project snapshots to export as pksim5 projects'
     required: false
   pk-sim-version: 
-    description: 'Path a csv file defining the tools and versions to install'
+    description: 'Version of PK-Sim'
     required: false
-    default: 11.3.208
+    default: '11.3.208'
   qualification-framework-version:
     description: 'Version of the Qualification Framework'
     required: false
-    default: 3.2
+    default: '3.2'
   save-model-file:
     description: 'Save pksim5 model file'
     required: true
@@ -129,6 +129,10 @@ runs:
         workingDirectory <- normalizePath("${{ inputs.snapshot }}", winslash = "/")
         reportPath <- file.path(workingDirectory, "${{ inputs.snapshot }}_evaluation_report.md")
         # Convert to html using css
+        download.file(
+          url = "https://raw.githubusercontent.com/pchelle/osp-actions/refs/heads/main/osp.css",
+          destfile = "osp.css"
+        )
         knitr::pandoc(
           reportPath, 
           paste(
