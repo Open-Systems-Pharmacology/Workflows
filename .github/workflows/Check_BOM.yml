@@ -17,7 +17,7 @@ jobs:
           shopt -s globstar
           shopt -s nocaseglob
           bom_found=false
-          for file in **/*.csv **/*.json **/*.md; do
+          for file in "**/*.csv" "**/*.json" "**/*.md"; do
             bom=$(hexdump -n 3 -e '/1 "%02x"' "$file")
             if [ "$bom" = "efbbbf" ]; then
               echo "Error: File $file has a BOM"
