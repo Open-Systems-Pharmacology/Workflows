@@ -1,4 +1,4 @@
-name: Check BOM in CSV files
+name: Check BOM in CSV, JSON and MD files
 
 on: workflow_call
 
@@ -12,18 +12,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check for BOM in CSV files
+      - name: Check for BOM in CSV, JSON and MD files
         run: |
           shopt -s globstar
           shopt -s nocaseglob
-          for file in **/*.csv; do
-            bom=$(hexdump -n 3 -e '/1 "%02x"' "$file")
-            if [ "$bom" = "efbbbf" ]; then
-              echo "Error: File $file has a BOM"
-              echo "::error file=$file::File has BOM"
-              bom_found=true
-            else
-              echo "File $file is valid"
+          bom_found=false
+          for file in **/*.csv **/*.json **/*.md; do
+            if [ -f "$file" ]; then
+              bom=$(hexdump -n 3 -e '/1 "%02x"' "$file")
+              if [ "$bom" = "efbbbf" ]; then
+                echo "Error: File $file has a BOM"
+                echo "::error file=$file::File has BOM"
+                bom_found=true
+              else
+                echo "File $file is valid"
+              fi
             fi
           done
           if [ "$bom_found" = true ] ; then
