@@ -1,0 +1,95 @@
+name: 'Get Tools Versions'
+description: 'Get OSPSuite tool names and versions'
+author: 'pchelle'
+
+inputs:
+  tools-path: 
+    description: 'Path a csv file defining the tools and versions to install'
+    required: true
+outputs:
+  pk-sim: 
+    description: "PK Sim Version"
+    value: ${{ steps.tools-versions.outputs.pk-sim  }}
+  qualification-framework: 
+    description: "Qualification framework version"
+    value: ${{ steps.tools-versions.outputs.qualification-framework  }}
+  ospsuite-r: 
+    description: "OSPSuite-R package version"
+    value: ${{ steps.tools-versions.outputs.ospsuite-r  }}
+  reporting-engine: 
+    description: "OSPSuite.ReportingEngine R package version"
+    value: ${{ steps.tools-versions.outputs.reporting-engine  }}
+  tlf: 
+    description: "TLF-Library R package version"
+    value: ${{ steps.tools-versions.outputs.tlf  }}
+  tools-table:
+    description: "Markdown table corresponding to csv tools information"
+    value: ${{ steps.tools-table.outputs.table  }}
+  
+runs:
+  using: "composite"
+  steps:
+    - id: install-r
+      name: Setup R
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: '4.3.1'
+        use-public-rspm: true
+        
+    - id: check-tools
+      name: Check tools input
+      run: |
+        install.packages(c("jsonlite"), repos = 'http://cran.us.r-project.org', type='win.binary')
+        toolsData <- read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character")
+        toolsData <- sapply(
+          toolsData$Tool, 
+          function(toolName){
+            list(
+              version = toolsData$Version[toolsData$Tool %in% toolName], 
+              url = toolsData$URL[toolsData$Tool %in% toolName]
+            )
+          }, 
+          USE.NAMES = TRUE,
+          simplify = FALSE
+          )
+        # Save PK sim and Qualifcation framework versions
+        cat(toolsData$`PK-Sim`$version, file = "pk-sim-version.txt")
+        cat(toolsData$`Qualification Framework`$version, file = "qualification-framework-version.txt")
+        cat(toolsData$`ospsuite-R`$version, file = "ospsuite-r-version.txt")
+        cat(toolsData$`Reporting Engine`$version, file = "reporting-engine-version.txt")
+        cat(toolsData$TLF$version, file = "tlf-version.txt")
+      shell: Rscript {0}
+    
+    - id: save-tools-json
+      name: Save tools.json
+      run: |
+        cat(jsonlite::toJSON(read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character"), dataframe = "rows"), file = "tools.json")
+      shell: Rscript {0}
+
+    - id: tools-versions
+      name: Output tools data for table conversion
+      run: |
+        echo "pk-sim=$(cat pk-sim-version.txt)" >> $GITHUB_OUTPUT
+        echo "qualification-framework=$(cat qualification-framework-version.txt)" >> $GITHUB_OUTPUT
+        echo "ospsuite-r=$(cat ospsuite-r-version.txt)" >> $GITHUB_OUTPUT
+        echo "reporting-engine=$(cat reporting-engine-version.txt)" >> $GITHUB_OUTPUT
+        echo "tlf=$(cat tlf.txt)" >> $GITHUB_OUTPUT
+        rm pk-sim-version.txt
+        rm qualification-framework-version.txt
+        rm ospsuite-r-version.txt
+        rm reporting-engine-version.txt
+        rm tlf-version.txt
+      shell: bash
+    
+    - id: tools-data
+      name: Output tools data for table conversion
+      run: |
+        echo "json=$(cat tools.json)" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - id: tools-table
+      name: Markdown table for tools
+      uses: buildingcash/json-to-markdown-table-action@v1 
+      with: 
+        json: "${{ steps.tools-data.outputs.json }}"
+   

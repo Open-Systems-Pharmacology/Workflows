@@ -1,0 +1,163 @@
+name: 'Setup Qualification Environment'
+description: 'Install OSPSuite tools and Qualification Framework based on csv file input'
+author: 'pchelle'
+
+inputs:
+  tools-path: 
+    description: 'Path a csv file defining the tools and versions to install'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - id: install-chromehtml2pdf
+      name: Install chromehtml2pdf for pdf conversion
+      run: |
+        npm install -g chromehtml2pdf
+      shell: bash
+      
+    - id: install-pandoc
+      name: Install Pandoc for html and word conversion
+      uses: r-lib/actions/setup-pandoc@v2
+      
+    - id: install-r
+      name: Setup R
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: '4.3.1'
+        use-public-rspm: true
+        
+    - id: check-tools
+      name: Check tools input
+      run: |
+        toolsData <- read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character")
+        print(toolsData)
+      shell: Rscript {0}
+    
+    - id: install-cran-packages
+      name: Install cran packages
+      run: |
+        # Packages required to remotely install OSPSuite packages
+        install.packages(c("remotes", "pak"), repos = 'http://cran.us.r-project.org', type='win.binary')
+        print("CRAN Packages suggested and required by ospsuite-r")
+        pak::pak(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
+        print("CRAN Packages suggested and required by tlf")
+        pak::pak(c('stringr','gridtext','ggtext','showtext','rsvg','svglite','cowplot'))
+        print("CRAN Packages suggested and required by reporting engine")
+        pak::pak(c('jsonlite','rmarkdown','knitr','parallel','readxl','Rmpi'))
+        # Following packages should not be needed c('testthat','covr','pkgdown')
+      shell: Rscript {0}
+    
+    - id: install-ospsuite-tools
+      name: Install OSPSuite tools
+      run: |
+        # Function to install an R package in tools.csv
+        toolInstall <- function(packageInfo){
+          # Case when install uses tag or branch
+          if(is.na(packageInfo$url)){
+            isTagVersion <- grepl(pattern = "^\\d+\\.\\d+", packageInfo$version)
+            pak::pak(paste0(
+              "Open-Systems-Pharmacology/", packageInfo$repo,
+              "@", ifelse(isTagVersion, "v", ""), packageInfo$version
+            ))
+            return("Package installed")
+          }
+          # Case when install uses url
+          download.file(packageInfo$url, destfile = packageInfo$zip, mode = "wb")
+          unzip(packageInfo$zip)
+          unlink(packageInfo$zip)
+          install.packages(list.files(pattern = "zip"), repos = NULL, type = "binary")
+          unlink(list.files(pattern = "zip"))
+          return("Package installed")
+          }
+          getPackageRepo <- function(toolName){
+            switch(
+              toolName,
+              "RUtils" = "OSPSuite.RUtils",
+              "rClr" = "rClr",
+              "rSharp" = "rSharp",
+              "TLF" = "TLF-Library",
+              "ospsuite-R" = "OSPSuite-R",
+              "Reporting Engine" = "OSPSuite.ReportingEngine",
+              "PK-Sim" = "PK-Sim",
+              "Qualification Runner" = "QualificationRunner",
+              "Qualification Framework" = "QualificationFramework"
+            )
+          }
+          
+        # Get the tools data and versions
+        toolsData <- read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character")
+        toolsData <- sapply(
+          toolsData$Tool, 
+          function(toolName){
+            list(
+              version = toolsData$Version[toolsData$Tool %in% toolName], 
+              url = toolsData$URL[toolsData$Tool %in% toolName],
+              repo = getPackageRepo(toolName),
+              zip = paste0(toolName, ".zip")
+            )
+          }, 
+          USE.NAMES = TRUE,
+          simplify = FALSE
+          )
+        
+        # RUtils
+        toolInstall(toolsData$RUtils)
+        # rClr
+        if(is.na(toolsData$rClr$url)){
+          if(!is.na(toolsData$rClr$version)){
+          rClrURL <- paste0(
+            "https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v",
+            toolsData$rClr$version, "/rClr_", toolsData$rClr$version, ".zip"
+          )
+          download.file(rClrURL, destfile = "rClr.zip", mode = "wb")
+          install.packages("rClr.zip", repos = NULL, type = "binary")
+          unlink("rClr.zip")
+          }
+        }else{
+          download.file(toolsData$rClr$url, destfile = "rClr.zip", mode = "wb")
+          install.packages("rClr.zip", repos = NULL, type = "binary")
+          unzip("rClr.zip")
+        }
+        # rSharp
+        toolInstall(toolsData$rSharp)
+        # TLF
+        toolInstall(toolsData$TLF)
+        # OSPSuite
+        toolInstall(toolsData$`ospsuite-R`)
+        # Reporting Engine
+        toolInstall(toolsData$`Reporting Engine`)
+        # PK-Sim 
+        if(is.na(toolsData$`PK-Sim`$url)){
+          pkSimURL <- paste0(
+            "https://github.com/Open-Systems-Pharmacology/PK-Sim/releases/download/v",
+            toolsData$`PK-Sim`$version, "/pk-sim-portable-setup.zip"
+            )
+          download.file(pkSimURL, destfile = "pk-sim-portable-setup.zip", mode = "wb")
+        }else{
+          download.file(toolsData$`PK-Sim`$url, destfile = "pk-sim-portable-setup.zip", mode = "wb")
+        }
+        unzip("pk-sim-portable-setup.zip", exdir = "PK-Sim")
+        unlink("pk-sim-portable-setup.zip")
+        file.rename(
+          from = list.files("PK-Sim", full.names = TRUE),
+          to = file.path("PK-Sim", "PK-Sim")
+          )
+        # Qualification Runner
+        if(is.na(toolsData$`Qualification Runner`$url)){
+        qualiRunnerURL <- paste0(
+          "https://github.com/Open-Systems-Pharmacology/QualificationRunner/releases/download/v",
+          toolsData$`Qualification Runner`$version, "/qualificationrunner-portable-setup", 
+          switch(toolsData$`Qualification Runner`$version, "10.0.59" = "", "11.0" = "_11.0.138", "11.1" = "_11.1.130"), ".zip"
+          )
+        download.file(qualiRunnerURL, destfile = "qualificationrunner.zip", mode = "wb")
+        }else{
+          download.file(toolsData$`Qualification Runner`$url, destfile = "qualificationrunner.zip", mode = "wb")
+        }
+        unzip("qualificationrunner.zip", exdir = "QualificationRunner")
+        unlink("qualificationrunner.zip")
+        file.rename(
+          from = list.files("QualificationRunner", full.names = TRUE),
+          to = file.path("QualificationRunner", "QualificationRunner")
+          )
+      shell: Rscript {0}
