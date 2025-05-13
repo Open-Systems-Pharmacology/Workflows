@@ -1,163 +1,200 @@
-name: 'Setup Qualification Environment'
-description: 'Install OSPSuite tools and Qualification Framework based on csv file input'
+name: 'Run Evaluation Report'
+description: 'Run and report the evaluation or qualification of PBPK model. '
 author: 'pchelle'
 
 inputs:
-  tools-path: 
-    description: 'Path a csv file defining the tools and versions to install'
+  model-repo: 
+    description: 'Name of Github OSP repository from which to get the Model'
     required: true
+  model-version:
+    description: 'Tag version of the model OSP repository'
+    required: true
+    default: '1.0'
+  snapshot:
+    description: 'Name of the snapshot (.json) file'
+    required: true
+  workflow-script:
+    description: 'Path of workflow R script that creates the function to run the qualification if not default'
+    required: false
+  additional-project-urls:
+    description: 'URL of additional project snapshots to export as pksim5 projects'
+    required: false
+  pk-sim-version: 
+    description: 'Version of PK-Sim'
+    required: false
+    default: '11.3.208'
+  qualification-framework-version:
+    description: 'Version of the Qualification Framework'
+    required: false
+    default: '3.2'
+  save-model-file:
+    description: 'Save pksim5 model file'
+    required: true
+    default: 'false'
+  save-pdf:
+    description: 'Save evaluation report as PDF'
+    required: true
+    default: 'true'
+  save-word:
+    description: 'Save evaluation report as word document'
+    required: true
+    default: 'false'  
 
 runs:
   using: "composite"
   steps:
-    - id: install-chromehtml2pdf
-      name: Install chromehtml2pdf for pdf conversion
+    - id: setup-repo
+      name: Setup Working Directory for Evaluation
       run: |
-        npm install -g chromehtml2pdf
-      shell: bash
-      
-    - id: install-pandoc
-      name: Install Pandoc for html and word conversion
-      uses: r-lib/actions/setup-pandoc@v2
-      
-    - id: install-r
-      name: Setup R
-      uses: r-lib/actions/setup-r@v2
+        qualificationProject <- "${{ inputs.model-repo }}"
+        modelName <- "${{ inputs.snapshot }}"
+        snapshotFile <- paste0(modelName, ".json")
+        # Clean up workingDirectory because of potential rebase
+        workingDirectory <- normalizePath(modelName, mustWork = FALSE, winslash = "/")
+        unlink(workingDirectory, recursive = TRUE)
+        # Load repository content and clean up downloads
+        download.file(
+          paste0(
+            "https://github.com/Open-Systems-Pharmacology/", qualificationProject, 
+            "/archive/refs/tags/v${{ inputs.model-version }}.zip"
+          ),
+          destfile = "archive.zip"
+        )
+        unzip("archive.zip", exdir = "archive")
+        unlink("archive.zip")
+        file.copy(
+          list.files("archive", pattern = qualificationProject, full.names = TRUE), 
+          getwd(), 
+          recursive = TRUE
+        )
+        file.rename(from = list.files(pattern = qualificationProject), to = modelName)
+        unlink("archive", recursive = TRUE)
+      shell: Rscript {0}
+    
+    - id: run-evaluation
+      name: Run evaluation
+      run: |
+        qualificationRunnerFolder <- normalizePath("QualificationRunner/QualificationRunner", winslash = "/")
+        pkSimPortableFolder <- normalizePath("PK-Sim/PK-Sim", winslash = "/")
+        workingDirectory <- normalizePath("${{ inputs.snapshot }}", winslash = "/")
+        # Load library and clear simulation cache in case
+        library(ospsuite.reportingengine)
+        ospsuite::clearMemory(clearSimulationsCache = TRUE)
+        versionInfo <- QualificationVersionInfo$new(
+          "${{ inputs.model-version }}",
+          paste(head(unlist(strsplit("${{ inputs.pk-sim-version }}", "\\.")), 2), collapse = "."), 
+          "${{ inputs.qualification-framework-version }}"
+        )
+        # Fetch createQualificationReport() function from qualificationPath
+        setwd(workingDirectory)
+        workflowScript <- "${{ inputs.workflow-script }}"
+        qualificationPath <- ifelse(
+          any(is.null(workflowScript), is.na(workflowScript), workflowScript %in% ""),
+          # If note specified, use default evaluation/workflow.R
+          list.files(recursive = TRUE, pattern = "workflow.R", full.names = TRUE, ignore.case = TRUE),
+          workflowScript
+          )
+        source(qualificationPath)
+        # Needs to be run from same directory as workflow.R
+        setwd(dirname(qualificationPath))
+        createQualificationReport(
+          qualificationRunnerFolder = qualificationRunnerFolder,
+          pkSimPortableFolder = pkSimPortableFolder,
+          createWordReport = as.logical("${{ inputs.save-word }}"),
+          versionInfo = versionInfo
+          )
+        # Clean up and keep only the final report
+        setwd(workingDirectory)
+        reportPaths <- list.files(pattern = "report.md", recursive = TRUE, full.names = TRUE, ignore.case = TRUE)
+        copyReport(
+          from = tail(reportPaths, 1), 
+          to = "${{ inputs.snapshot }}_evaluation_report.md", 
+          copyWordReport = as.logical("${{ inputs.save-word }}")
+        )
+        unlink(dirname(qualificationPath), recursive = TRUE)
+      shell: Rscript {0}
+
+    - id: convert-to-pdf
+      name: Convert to pdf
+      run: |
+        if(!as.logical("${{ inputs.save-pdf }}")){
+          return()
+        }
+        workingDirectory <- normalizePath("${{ inputs.snapshot }}", winslash = "/")
+        reportPath <- file.path(workingDirectory, "${{ inputs.snapshot }}_evaluation_report.md")
+        # Convert to html using css
+        download.file(
+          url = "https://raw.githubusercontent.com/pchelle/osp-actions/refs/heads/main/osp.css",
+          destfile = "osp.css"
+        )
+        knitr::pandoc(
+          reportPath, 
+          paste(
+            "html", 
+            "--embed-resources", 
+            "--standalone", 
+            "--mathjax",
+            "--quiet",
+            "-c \"osp.css\"",
+            "-f gfm+tex_math_dollars"
+            )
+          )
+        cmdLine <- paste(
+          'chromehtml2pdf',
+          paste0('--out="', gsub(pattern = ".md", ".pdf", reportPath), '"'),
+          "--displayHeaderFooter true",
+          "--format A4",
+          "--printBackground true",
+          "--marginTop 10mm",
+          "--marginBottom 20mm",
+          "--marginLeft 10mm",
+          "--marginRight 10mm",
+          '--headerTemplate "<span></span>"',
+          '--footerTemplate "<p style=\\"text-align: center; margin: auto; font-size: 10px;\\"><span class=\\"pageNumber\\"></span>/<span class=\\"totalPages\\"></span></p>"',
+          paste0('"', gsub(pattern = ".md", ".html", reportPath), '"')
+        )
+        system(cmdLine)
+      shell: Rscript {0}
+
+    - id: save-model-files
+      name: Convert to pksim5 model files
+      run: |
+        if(!as.logical("${{ inputs.save-model-file }}")){
+          return()
+        }
+        workingDirectory <- normalizePath("${{ inputs.snapshot }}", winslash = "/")
+        pkSimPath <- normalizePath("PK-Sim/PK-Sim/PKSim.CLI.exe", winslash = "/")
+        cmdLine <- paste(
+          pkSimPath,
+          "snap",
+          # Snapshot file <modelName>.json is in working directory
+          "-i", workingDirectory,
+          "-o", workingDirectory,
+          "-p"
+        )
+        system(cmdLine)
+        # For next step, remove potential json from working directory
+        unlink(file.path(workingDirectory, "${{ inputs.snapshot }}.json"))
+        additionalSnapshots <- ospsuite::toPathArray("${{ inputs.additional-project-urls }}")
+        for(additionalSnapshot in additionalSnapshots){
+          download.file(
+            # Use Github raw.githubusercontent.com to download snapshot file
+            file.path("https://raw.githubusercontent.com/Open-Systems-Pharmacology", additionalSnapshot), 
+            # Keep only the last name of the path (eg <model name>_Pediatrics.json)
+            destfile = file.path(workingDirectory, basename(additionalSnapshot))
+          )
+          system(cmdLine)
+          unlink(file.path(workingDirectory, basename(additionalSnapshot)))
+        }
+      shell: Rscript {0}
+
+    - id: upload-failed-run
+      name: Upload artifact if failed
+      if: failure()
+      uses: actions/upload-artifact@v4
       with:
-        r-version: '4.3.1'
-        use-public-rspm: true
-        
-    - id: check-tools
-      name: Check tools input
-      run: |
-        toolsData <- read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character")
-        print(toolsData)
-      shell: Rscript {0}
-    
-    - id: install-cran-packages
-      name: Install cran packages
-      run: |
-        # Packages required to remotely install OSPSuite packages
-        install.packages(c("remotes", "pak"), repos = 'http://cran.us.r-project.org', type='win.binary')
-        print("CRAN Packages suggested and required by ospsuite-r")
-        pak::pak(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
-        print("CRAN Packages suggested and required by tlf")
-        pak::pak(c('stringr','gridtext','ggtext','showtext','rsvg','svglite','cowplot'))
-        print("CRAN Packages suggested and required by reporting engine")
-        pak::pak(c('jsonlite','rmarkdown','knitr','parallel','readxl','Rmpi'))
-        # Following packages should not be needed c('testthat','covr','pkgdown')
-      shell: Rscript {0}
-    
-    - id: install-ospsuite-tools
-      name: Install OSPSuite tools
-      run: |
-        # Function to install an R package in tools.csv
-        toolInstall <- function(packageInfo){
-          # Case when install uses tag or branch
-          if(is.na(packageInfo$url)){
-            isTagVersion <- grepl(pattern = "^\\d+\\.\\d+", packageInfo$version)
-            pak::pak(paste0(
-              "Open-Systems-Pharmacology/", packageInfo$repo,
-              "@", ifelse(isTagVersion, "v", ""), packageInfo$version
-            ))
-            return("Package installed")
-          }
-          # Case when install uses url
-          download.file(packageInfo$url, destfile = packageInfo$zip, mode = "wb")
-          unzip(packageInfo$zip)
-          unlink(packageInfo$zip)
-          install.packages(list.files(pattern = "zip"), repos = NULL, type = "binary")
-          unlink(list.files(pattern = "zip"))
-          return("Package installed")
-          }
-          getPackageRepo <- function(toolName){
-            switch(
-              toolName,
-              "RUtils" = "OSPSuite.RUtils",
-              "rClr" = "rClr",
-              "rSharp" = "rSharp",
-              "TLF" = "TLF-Library",
-              "ospsuite-R" = "OSPSuite-R",
-              "Reporting Engine" = "OSPSuite.ReportingEngine",
-              "PK-Sim" = "PK-Sim",
-              "Qualification Runner" = "QualificationRunner",
-              "Qualification Framework" = "QualificationFramework"
-            )
-          }
-          
-        # Get the tools data and versions
-        toolsData <- read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character")
-        toolsData <- sapply(
-          toolsData$Tool, 
-          function(toolName){
-            list(
-              version = toolsData$Version[toolsData$Tool %in% toolName], 
-              url = toolsData$URL[toolsData$Tool %in% toolName],
-              repo = getPackageRepo(toolName),
-              zip = paste0(toolName, ".zip")
-            )
-          }, 
-          USE.NAMES = TRUE,
-          simplify = FALSE
-          )
-        
-        # RUtils
-        toolInstall(toolsData$RUtils)
-        # rClr
-        if(is.na(toolsData$rClr$url)){
-          if(!is.na(toolsData$rClr$version)){
-          rClrURL <- paste0(
-            "https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v",
-            toolsData$rClr$version, "/rClr_", toolsData$rClr$version, ".zip"
-          )
-          download.file(rClrURL, destfile = "rClr.zip", mode = "wb")
-          install.packages("rClr.zip", repos = NULL, type = "binary")
-          unlink("rClr.zip")
-          }
-        }else{
-          download.file(toolsData$rClr$url, destfile = "rClr.zip", mode = "wb")
-          install.packages("rClr.zip", repos = NULL, type = "binary")
-          unzip("rClr.zip")
-        }
-        # rSharp
-        toolInstall(toolsData$rSharp)
-        # TLF
-        toolInstall(toolsData$TLF)
-        # OSPSuite
-        toolInstall(toolsData$`ospsuite-R`)
-        # Reporting Engine
-        toolInstall(toolsData$`Reporting Engine`)
-        # PK-Sim 
-        if(is.na(toolsData$`PK-Sim`$url)){
-          pkSimURL <- paste0(
-            "https://github.com/Open-Systems-Pharmacology/PK-Sim/releases/download/v",
-            toolsData$`PK-Sim`$version, "/pk-sim-portable-setup.zip"
-            )
-          download.file(pkSimURL, destfile = "pk-sim-portable-setup.zip", mode = "wb")
-        }else{
-          download.file(toolsData$`PK-Sim`$url, destfile = "pk-sim-portable-setup.zip", mode = "wb")
-        }
-        unzip("pk-sim-portable-setup.zip", exdir = "PK-Sim")
-        unlink("pk-sim-portable-setup.zip")
-        file.rename(
-          from = list.files("PK-Sim", full.names = TRUE),
-          to = file.path("PK-Sim", "PK-Sim")
-          )
-        # Qualification Runner
-        if(is.na(toolsData$`Qualification Runner`$url)){
-        qualiRunnerURL <- paste0(
-          "https://github.com/Open-Systems-Pharmacology/QualificationRunner/releases/download/v",
-          toolsData$`Qualification Runner`$version, "/qualificationrunner-portable-setup", 
-          switch(toolsData$`Qualification Runner`$version, "10.0.59" = "", "11.0" = "_11.0.138", "11.1" = "_11.1.130"), ".zip"
-          )
-        download.file(qualiRunnerURL, destfile = "qualificationrunner.zip", mode = "wb")
-        }else{
-          download.file(toolsData$`Qualification Runner`$url, destfile = "qualificationrunner.zip", mode = "wb")
-        }
-        unzip("qualificationrunner.zip", exdir = "QualificationRunner")
-        unlink("qualificationrunner.zip")
-        file.rename(
-          from = list.files("QualificationRunner", full.names = TRUE),
-          to = file.path("QualificationRunner", "QualificationRunner")
-          )
-      shell: Rscript {0}
+        name: failed-${{ inputs.snapshot }}
+        path: |
+          ${{ inputs.snapshot }}/**
+          **.txt
+          **.md
