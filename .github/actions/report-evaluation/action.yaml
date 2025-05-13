@@ -38,15 +38,7 @@ inputs:
   save-word:
     description: 'Save evaluation report as word document'
     required: true
-    default: false
-  save-artifact: 
-    description: 'Upload the report and exported files as artifact'
-    required: true
-    default: true
-outputs:
-  artifact-url:
-    description: 'URL of uploaded artifact'
-    value: ${{ steps.upload-report.outputs.artifact-url  }}
+    default: false  
 
 runs:
   using: "composite"
@@ -123,9 +115,11 @@ runs:
       shell: Rscript {0}
 
     - id: convert-to-pdf
-      if: ${{ inputs.save-pdf }}
       name: Convert to pdf
       run: |
+        if(!as.logical("${{ inputs.save-pdf }}")){
+          return()
+        }
         workingDirectory <- normalizePath("${{ inputs.snapshot }}", winslash = "/")
         reportPath <- file.path(workingDirectory, "${{ inputs.snapshot }}_evaluation_report.md")
         # Convert to html using css
@@ -163,9 +157,11 @@ runs:
       shell: Rscript {0}
 
     - id: save-model-files
-      if: ${{ inputs.save-model-file }}
       name: Convert to pksim5 model files
       run: |
+        if(!as.logical("${{ inputs.save-model-file }}")){
+          return()
+        }
         workingDirectory <- normalizePath("${{ inputs.snapshot }}", winslash = "/")
         pkSimPath <- normalizePath("PK-Sim/PK-Sim/PKSim.CLI.exe", winslash = "/")
         cmdLine <- paste(
@@ -202,16 +198,3 @@ runs:
           ${{ inputs.snapshot }}/**
           **.txt
           **.md
-
-    - id: upload-report
-      if: ${{ inputs.save-artifact }}
-      name: Upload the report artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ inputs.snapshot }}-${{ inputs.model-version }}
-        path: |
-          ${{ inputs.snapshot }}
-          !${{ inputs.snapshot }}/README.md
-          !${{ inputs.snapshot }}/Evaluation
-          !${{ inputs.snapshot }}/*.html
-      
