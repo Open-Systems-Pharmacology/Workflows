@@ -15,7 +15,6 @@ Run and report the evaluation or qualification of PBPK model.
     qualification-framework-version: '3.2'
     save-model-file: true
     save-pdf: true
-    save-artifact: true
 ```
 
 ## Inputs
@@ -32,10 +31,5 @@ Run and report the evaluation or qualification of PBPK model.
 | `save-model-file` | `true` | `true` | Save pksim5 model file |
 | `save-pdf` | `true` | `true` | Save evalution report as PDF |
 | `save-word` | `false` | `false` | Save evalution report as word document |
-| `save-artifact`| `true` | `true` | Save the report as artifact |
 
-
-## Outputs
-
-If `save-artifact: true`, the action will output `artifact-url`
 
