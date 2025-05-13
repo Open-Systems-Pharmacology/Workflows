@@ -30,22 +30,22 @@ inputs:
   save-model-file:
     description: 'Save pksim5 model file'
     required: true
-    default: TRUE
+    default: false
   save-pdf:
     description: 'Save evaluation report as PDF'
     required: true
-    default: TRUE
+    default: true
   save-word:
     description: 'Save evaluation report as word document'
     required: true
-    default: FALSE
+    default: false
   save-artifact: 
     description: 'Upload the report and exported files as artifact'
     required: true
-    default: TRUE
+    default: true
 outputs:
   artifact-url:
-    description: "URL of uploaded artifact"
+    description: 'URL of uploaded artifact'
     value: ${{ steps.upload-report.outputs.artifact-url  }}
 
 runs:
