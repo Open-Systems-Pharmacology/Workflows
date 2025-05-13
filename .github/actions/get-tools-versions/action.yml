@@ -73,7 +73,7 @@ runs:
         echo "qualification-framework=$(cat qualification-framework-version.txt)" >> $GITHUB_OUTPUT
         echo "ospsuite-r=$(cat ospsuite-r-version.txt)" >> $GITHUB_OUTPUT
         echo "reporting-engine=$(cat reporting-engine-version.txt)" >> $GITHUB_OUTPUT
-        echo "tlf=$(cat tlf.txt)" >> $GITHUB_OUTPUT
+        echo "tlf=$(cat tlf-version.txt)" >> $GITHUB_OUTPUT
         rm pk-sim-version.txt
         rm qualification-framework-version.txt
         rm ospsuite-r-version.txt
