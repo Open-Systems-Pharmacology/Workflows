@@ -30,15 +30,15 @@ inputs:
   save-model-file:
     description: 'Save pksim5 model file'
     required: true
-    default: false
+    default: 'false'
   save-pdf:
     description: 'Save evaluation report as PDF'
     required: true
-    default: true
+    default: 'true'
   save-word:
     description: 'Save evaluation report as word document'
     required: true
-    default: false  
+    default: 'false'
 
 runs:
   using: "composite"
