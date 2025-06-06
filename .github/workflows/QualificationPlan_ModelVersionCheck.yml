@@ -1,0 +1,111 @@
+name: Check for latest model releases in a qualification plan
+
+on:
+  workflow_call:
+    inputs:
+      qualification_plan:
+        description: 'Path to the qualification plan JSON file'
+        required: false
+        type: string
+        default: 'Qualification/Input/qualification_plan.json'
+
+jobs:
+  check-latest-model-releases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Create release checker script
+        run: |
+          cat > check_releases.py << 'EOF'
+          #!/usr/bin/env python3
+          
+          import json
+          import re
+          import requests
+          import sys
+          import os
+          
+          # Get the qualification plan path from environment variable
+          qualification_plan_path = os.environ.get("QUALIFICATION_PLAN")
+          
+          try:
+              with open(qualification_plan_path, "r") as f:
+                  plan = json.load(f)
+          except Exception as e:
+              print(f"Error reading qualification plan file: {str(e)}")
+              sys.exit(1)
+          
+          def parse_github_url(url):
+              """Extract owner, repo, and version tag from raw.githubusercontent.com URL"""
+              pattern = r"https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/.+"
+              match = re.match(pattern, url)
+              if not match:
+                  return None, None, None
+              return match.group(1), match.group(2), match.group(3)
+          
+          # Use GitHub token for API requests if available
+          headers = {}
+          if "GITHUB_TOKEN" in os.environ:
+              headers["Authorization"] = f"token {os.environ['GITHUB_TOKEN']}"
+          
+          has_outdated_projects = False
+          
+          # Check each project
+          for project in plan.get("Projects", []):
+              project_id = project.get("Id")
+              project_path = project.get("Path")
+              
+              if not project_path:
+                  continue
+                  
+              owner, repo, current_version = parse_github_url(project_path)
+              
+              if not all([owner, repo, current_version]):
+                  print(f"Warning: Could not parse repository info from {project_path}")
+                  continue
+              
+              # Get ALL releases (including pre-releases) using GitHub API
+              api_url = f"https://api.github.com/repos/{owner}/{repo}/releases"
+              try:
+                  response = requests.get(api_url, headers=headers)
+                  response.raise_for_status()
+                  all_releases = response.json()
+                  
+                  # Check if there are any releases
+                  if not all_releases:
+                      print(f"No releases found for {owner}/{repo}")
+                      continue
+                  
+                  # Get the most recent release (including pre-releases)
+                  # Releases are already sorted by date (newest first) by GitHub API
+                  latest_release = all_releases[0].get("tag_name")
+                  
+                  if latest_release and latest_release != current_version:
+                      print(f"Project {project_id} has later release {latest_release}")
+                      has_outdated_projects = True
+                      
+              except requests.RequestException as e:
+                  print(f"Error checking releases for {owner}/{repo}: {str(e)}")
+          
+          # Exit with error code if any outdated projects found
+          if has_outdated_projects:
+              sys.exit(1)
+          EOF
+
+      - name: Check for newer releases
+        run: python check_releases.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QUALIFICATION_PLAN: ${{ inputs.qualification_plan }}
