@@ -39,7 +39,7 @@ runs:
     - id: check-tools
       name: Check tools input
       run: |
-        install.packages(c("jsonlite"), repos = 'http://cran.us.r-project.org', type='win.binary')
+        install.packages(c("jsonlite"), repos = 'http://cran.us.r-project.org')
         toolsData <- read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character")
         toolsData <- sapply(
           toolsData$Tool, 
