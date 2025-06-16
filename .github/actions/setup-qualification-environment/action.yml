@@ -38,7 +38,7 @@ runs:
       name: Install cran packages
       run: |
         # Packages required to remotely install OSPSuite packages
-        install.packages(c("remotes", "pak"), repos = 'http://cran.us.r-project.org', type='win.binary')
+        install.packages(c("remotes", "pak"), repos = 'http://cran.us.r-project.org')
         print("CRAN Packages suggested and required by ospsuite-r")
         pak::pak(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
         print("CRAN Packages suggested and required by tlf")
