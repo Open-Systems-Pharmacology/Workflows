@@ -1,0 +1,64 @@
+name: 'Download and unzip'
+description: 'Download a zip from an OSPSuite repository and extract as a specific path using R'
+author: 'pchelle'
+
+inputs:
+  repo: 
+    description: 'Name of Github OSP repository from which to download'
+    required: true
+  version:
+    description: 'Version of Github OSP repository can be either tag or branch version'
+    required: true
+    default: 'main'
+  extract-path:
+    description: 'Direcory of extracted repo content'
+    required: true
+  url:
+    description: 'If provided, is used instead of repo and version'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - id: download-unzip
+      name: Download and unzip
+      run: |
+        zipURL <- "${{ inputs.url }}"
+        if(nchar(zipURL)){
+          download.file(zipURL, destfile = "archive.zip")
+        } else {
+          # If version is provided, assess if it is a tag or a branch
+          isTag <- grepl(pattern = "[[:digit:]]\\.[[:digit:]]", x = "${{ inputs.version }}")
+          zipPath <- ifelse(isTag, "tags/v${{ inputs.version }}.zip", "heads/${{ inputs.version }}.zip")
+          download.file(
+            file.path("https://github.com/Open-Systems-Pharmacology/${{ inputs.repo }}/archive/refs", zipPath),
+            destfile = "archive.zip"
+            )
+        }
+        unzip("archive.zip", exdir = "archive")
+        unlink("archive.zip")
+      shell: Rscript {0}
+
+    - id: copy-archive
+      name: Copy archive extract-path
+      run: |
+        dir.create("${{ inputs.extract-path }}")
+        archiveDir <- list.files("archive", full.names = TRUE)
+        if(length(archiveDir)>1){
+          warning("Multiple files found in archive.")
+          for(archiveSubDir in archiveDir){
+            file.copy(
+              list.files(archiveSubDir, full.names = TRUE), 
+              "${{ inputs.extract-path }}",
+              recursive = TRUE
+            )
+          }
+        } else {
+          file.copy(
+            list.files(archiveDir, full.names = TRUE), 
+            "${{ inputs.extract-path }}",
+            recursive = TRUE
+          )
+        }
+        unlink("archive", recursive = TRUE)
+      shell: Rscript {0}

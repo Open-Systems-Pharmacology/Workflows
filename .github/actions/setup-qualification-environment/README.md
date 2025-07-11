@@ -8,7 +8,7 @@ Note that this action also installs `Pandoc` and `chromehtml2pdf` allowing conve
 
 ```yml
 - name: Setup Qualification Environment
-  uses: pchelle/osp-actions/setup-qualification-environment@main
+  uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-qualification-environment@main
   with:
     tools-path: tools.csv
 ```
