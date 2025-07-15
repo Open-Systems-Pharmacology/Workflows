@@ -56,6 +56,9 @@ runs:
           # Case when install uses tag or branch
           if(is.na(packageInfo$url)){
             isTagVersion <- grepl(pattern = "[[:digit:]]\\.[[:digit:]]", x = packageInfo$version)
+            # Check path
+            print(paste0("Open-Systems-Pharmacology/", packageInfo$repo))
+            print(paste0(ifelse(isTagVersion, "v", ""), packageInfo$version))
             remotes::install_github(
               repo = paste0("Open-Systems-Pharmacology/", packageInfo$repo),
               ref = paste0(ifelse(isTagVersion, "v", ""), packageInfo$version)
