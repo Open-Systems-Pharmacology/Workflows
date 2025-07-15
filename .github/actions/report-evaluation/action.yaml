@@ -121,7 +121,7 @@ runs:
         reportPath <- ifelse(isEvaluation, "${{ inputs.snapshot }}_evaluation_report.md", "report.md")
         # Convert to html using css, TODO find a better permanent url to store css
         download.file(
-          url = "https://raw.githubusercontent.com/pchelle/osp-actions/refs/heads/main/osp.css",
+          url = "https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/refs/heads/main/Data/osp.css",
           destfile = "osp.css"
         )
         knitr::pandoc(
