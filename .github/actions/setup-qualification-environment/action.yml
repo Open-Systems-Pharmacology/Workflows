@@ -6,6 +6,12 @@ inputs:
   tools-path: 
     description: 'Path a csv file defining the tools and versions to install'
     required: true
+  github-pat: 
+    description: 'Github personal access token'
+    required: true
+
+env:
+  GITHUB_PAT: ${{ inputs.github-pat }}
 
 runs:
   using: "composite"
@@ -38,7 +44,7 @@ runs:
       name: Install cran packages
       run: |
         # Packages required to remotely install OSPSuite packages
-        install.packages(c("remotes", "pak", "credentials"))
+        install.packages(c("remotes", "pak"))
         print("CRAN Packages suggested and required by ospsuite-r")
         pak::pkg_install(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
         print("CRAN Packages suggested and required by tlf")
@@ -51,7 +57,6 @@ runs:
     - id: install-ospsuite-tools
       name: Install OSPSuite tools
       run: |
-        credentials::set_github_pat(force_new = TRUE, validate = TRUE)
         # Function to install an R package in tools.csv
         toolInstall <- function(packageInfo){
           # Case when install uses tag or branch
