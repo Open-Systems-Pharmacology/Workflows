@@ -57,13 +57,11 @@ runs:
           # Case when install uses tag or branch
           if(is.na(packageInfo$url)){
             isTagVersion <- grepl(pattern = "[[:digit:]]\\.[[:digit:]]", x = packageInfo$version)
-            pak::pkg_install(paste0(
-              "Open-Systems-Pharmacology/", 
-              packageInfo$repo, 
-              "@", ifelse(isTagVersion, "v", ""), packageInfo$version
-              ),
-              upgrade = FALSE
-            )
+            remotes::instal_github(
+              repo = paste0("Open-Systems-Pharmacology/", packageInfo$repo), 
+              ref = paste0(ifelse(isTagVersion, "v", ""), packageInfo$version),
+              upgrade = "never"
+              )
             return("Package installed")
           }
           # Case when install uses url
