@@ -6,12 +6,6 @@ inputs:
   tools-path: 
     description: 'Path a csv file defining the tools and versions to install'
     required: true
-  github-pat: 
-    description: 'Github personal access token'
-    required: true
-
-env:
-  GITHUB_PAT: ${{ inputs.github-pat }}
 
 runs:
   using: "composite"
