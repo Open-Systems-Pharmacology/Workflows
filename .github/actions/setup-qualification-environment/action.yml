@@ -55,7 +55,7 @@ runs:
         toolInstall <- function(packageInfo){
           # Case when install uses tag or branch
           if(is.na(packageInfo$url)){
-            remotes::remotes::install_github(
+            remotes::install_github(
               repo = paste0("Open-Systems-Pharmacology/", packageInfo$repo),
               ref = packageInfo$version
             )
