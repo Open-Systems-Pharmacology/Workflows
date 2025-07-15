@@ -56,7 +56,7 @@ runs:
           # Case when install uses tag or branch
           if(is.na(packageInfo$url)){
             isTagVersion <- grepl(pattern = "[[:digit:]]\\.[[:digit:]]", x = packageInfo$version)
-            remotes::instal_github(
+            remotes::install_github(
               repo = paste0("Open-Systems-Pharmacology/", packageInfo$repo), 
               ref = paste0(ifelse(isTagVersion, "v", ""), packageInfo$version),
               upgrade = "never"
