@@ -38,7 +38,7 @@ runs:
       name: Install cran packages
       run: |
         # Packages required to remotely install OSPSuite packages
-        install.packages(c("remotes", "pak"))
+        install.packages(c("remotes", "pak", "credentials"))
         print("CRAN Packages suggested and required by ospsuite-r")
         pak::pkg_install(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
         print("CRAN Packages suggested and required by tlf")
@@ -51,6 +51,7 @@ runs:
     - id: install-ospsuite-tools
       name: Install OSPSuite tools
       run: |
+        credentials::set_github_pat(force_new = TRUE, validate = TRUE)
         # Function to install an R package in tools.csv
         toolInstall <- function(packageInfo){
           # Case when install uses tag or branch
