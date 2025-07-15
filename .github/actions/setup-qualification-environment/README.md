@@ -4,9 +4,15 @@ Install OSPSuite tools and Qualification Framework based on csv file input.
 
 Note that this action also installs `Pandoc` and `chromehtml2pdf` allowing conversion of the reports into pdf.
 
+> [!CAUTION]
+> The OSPSuite R packages are installed using `remotes::install_github()` which require a `GITHUB_PAT` to be defined in the environment variables
+
 ## Usage
 
 ```yml
+env:
+  GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
 - name: Setup Qualification Environment
   uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-qualification-environment@main
   with:
