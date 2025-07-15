@@ -38,13 +38,13 @@ runs:
       name: Install cran packages
       run: |
         # Packages required to remotely install OSPSuite packages
-        install.packages("remotes")
+        install.packages(c("remotes", "pak"))
         print("CRAN Packages suggested and required by ospsuite-r")
-        install.packages(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
+        pak::pkg_install(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
         print("CRAN Packages suggested and required by tlf")
-        install.packages(c('stringr','gridtext','ggtext','showtext','rsvg','svglite','cowplot'))
+        pak::pkg_install(c('stringr','gridtext','ggtext','showtext','rsvg','svglite','cowplot'))
         print("CRAN Packages suggested and required by reporting engine")
-        install.packages(c('jsonlite','rmarkdown','knitr','parallel','readxl','Rmpi'))
+        pak::pkg_install(c('jsonlite','rmarkdown','knitr','parallel','readxl','Rmpi'))
         # Following packages should not be needed c('testthat','covr','pkgdown')
       shell: Rscript {0}
     
@@ -56,12 +56,12 @@ runs:
           # Case when install uses tag or branch
           if(is.na(packageInfo$url)){
             isTagVersion <- grepl(pattern = "[[:digit:]]\\.[[:digit:]]", x = packageInfo$version)
-            # Check path
-            print(paste0("Open-Systems-Pharmacology/", packageInfo$repo))
-            print(paste0(ifelse(isTagVersion, "v", ""), packageInfo$version))
-            remotes::install_github(
-              repo = paste0("Open-Systems-Pharmacology/", packageInfo$repo),
-              ref = paste0(ifelse(isTagVersion, "v", ""), packageInfo$version)
+            pak::pkg_install(paste0(
+              "Open-Systems-Pharmacology/", 
+              packageInfo$repo, 
+              "@", ifelse(isTagVersion, "v", ""), packageInfo$version
+              ),
+              upgrade = FALSE
             )
             return("Package installed")
           }
