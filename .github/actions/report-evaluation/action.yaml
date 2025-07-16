@@ -118,7 +118,10 @@ runs:
         }
         workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
         isEvaluation <- as.logical("${{ inputs.evaluation }}")
-        reportPath <- ifelse(isEvaluation, "${{ inputs.snapshot }}_evaluation_report.md", "report.md")
+        reportPath <- file.path(
+          workingDirectory,
+          ifelse(isEvaluation, "${{ inputs.snapshot }}_evaluation_report.md", "report.md")
+        )
         # Convert to html using css, TODO find a better permanent url to store css
         download.file(
           url = "https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/refs/heads/main/Data/osp.css",
