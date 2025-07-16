@@ -38,13 +38,13 @@ runs:
       name: Install cran packages
       run: |
         # Packages required to remotely install OSPSuite packages
-        install.packages(c("remotes", "pak"), repos = 'http://cran.us.r-project.org')
+        install.packages(c("remotes", "pak"))
         print("CRAN Packages suggested and required by ospsuite-r")
-        pak::pak(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
+        pak::pkg_install(c('R6','rlang','dplyr','purrr','readr','tidyr','spelling','data.table','tidyselect','openxlsx','xml2'))
         print("CRAN Packages suggested and required by tlf")
-        pak::pak(c('stringr','gridtext','ggtext','showtext','rsvg','svglite','cowplot'))
+        pak::pkg_install(c('stringr','gridtext','ggtext','showtext','rsvg','svglite','cowplot'))
         print("CRAN Packages suggested and required by reporting engine")
-        pak::pak(c('jsonlite','rmarkdown','knitr','parallel','readxl','Rmpi'))
+        pak::pkg_install(c('jsonlite','rmarkdown','knitr','parallel','readxl','Rmpi'))
         # Following packages should not be needed c('testthat','covr','pkgdown')
       shell: Rscript {0}
     
@@ -55,11 +55,12 @@ runs:
         toolInstall <- function(packageInfo){
           # Case when install uses tag or branch
           if(is.na(packageInfo$url)){
-            isTagVersion <- grepl(pattern = "^\\d+\\.\\d+", packageInfo$version)
-            pak::pak(paste0(
-              "Open-Systems-Pharmacology/", packageInfo$repo,
-              "@", ifelse(isTagVersion, "v", ""), packageInfo$version
-            ))
+            isTagVersion <- grepl(pattern = "[[:digit:]]\\.[[:digit:]]", x = packageInfo$version)
+            remotes::install_github(
+              repo = paste0("Open-Systems-Pharmacology/", packageInfo$repo), 
+              ref = paste0(ifelse(isTagVersion, "v", ""), packageInfo$version),
+              upgrade = "never"
+              )
             return("Package installed")
           }
           # Case when install uses url
