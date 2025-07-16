@@ -113,78 +113,76 @@ runs:
     - id: convert-to-pdf
       name: Convert to pdf
       run: |
-        if(!as.logical("${{ inputs.save-pdf }}")){
-          return()
-        }
-        workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
-        isEvaluation <- as.logical("${{ inputs.evaluation }}")
-        reportPath <- file.path(
-          workingDirectory,
-          ifelse(isEvaluation, "${{ inputs.snapshot }}_evaluation_report.md", "report.md")
-        )
-        # Convert to html using css, TODO find a better permanent url to store css
-        download.file(
-          url = "https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/refs/heads/main/Data/osp.css",
-          destfile = "osp.css"
-        )
-        knitr::pandoc(
-          reportPath, 
-          paste(
-            "html", 
-            "--embed-resources", 
-            "--standalone", 
-            "--mathjax",
-            "--quiet",
-            "-c \"osp.css\"",
-            "-f gfm+tex_math_dollars"
-            )
+        if(as.logical("${{ inputs.save-pdf }}")){
+          workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
+          isEvaluation <- as.logical("${{ inputs.evaluation }}")
+          reportPath <- file.path(
+            workingDirectory,
+            ifelse(isEvaluation, "${{ inputs.snapshot }}_evaluation_report.md", "report.md")
           )
-        cmdLine <- paste(
-          'chromehtml2pdf',
-          paste0('--out="', gsub(pattern = ".md", ".pdf", reportPath), '"'),
-          "--displayHeaderFooter true",
-          "--format A4",
-          "--printBackground true",
-          "--marginTop 10mm",
-          "--marginBottom 20mm",
-          "--marginLeft 10mm",
-          "--marginRight 10mm",
-          '--headerTemplate "<span></span>"',
-          '--footerTemplate "<p style=\\"text-align: center; margin: auto; font-size: 10px;\\"><span class=\\"pageNumber\\"></span>/<span class=\\"totalPages\\"></span></p>"',
-          paste0('"', gsub(pattern = ".md", ".html", reportPath), '"')
-        )
-        system(cmdLine)
+          # Convert to html using css, TODO find a better permanent url to store css
+          download.file(
+            url = "https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/refs/heads/main/Data/osp.css",
+            destfile = "osp.css"
+          )
+          knitr::pandoc(
+            reportPath, 
+            paste(
+              "html", 
+              "--embed-resources", 
+              "--standalone", 
+              "--mathjax",
+              "--quiet",
+              "-c \"osp.css\"",
+              "-f gfm+tex_math_dollars"
+              )
+            )
+          cmdLine <- paste(
+            'chromehtml2pdf',
+            paste0('--out="', gsub(pattern = ".md", ".pdf", reportPath), '"'),
+            "--displayHeaderFooter true",
+            "--format A4",
+            "--printBackground true",
+            "--marginTop 10mm",
+            "--marginBottom 20mm",
+            "--marginLeft 10mm",
+            "--marginRight 10mm",
+            '--headerTemplate "<span></span>"',
+            '--footerTemplate "<p style=\\"text-align: center; margin: auto; font-size: 10px;\\"><span class=\\"pageNumber\\"></span>/<span class=\\"totalPages\\"></span></p>"',
+            paste0('"', gsub(pattern = ".md", ".html", reportPath), '"')
+          )
+          system(cmdLine)
+        }
       shell: Rscript {0}
 
     - id: save-model-files
       name: Convert to pksim5 model files
       run: |
-        if(!as.logical("${{ inputs.save-model-file }}")){
-          return()
-        }
-        workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
-        pkSimPath <- normalizePath("PK-Sim/PK-Sim/PKSim.CLI.exe", winslash = "/")
-        cmdLine <- paste(
-          pkSimPath,
-          "snap",
-          # Snapshot file <modelName>.json is in working directory
-          "-i", workingDirectory,
-          "-o", workingDirectory,
-          "-p"
-        )
-        system(cmdLine)
-        # For next step, remove potential json from working directory
-        unlink(file.path(workingDirectory, "${{ inputs.snapshot }}.json"))
-        additionalSnapshots <- ospsuite::toPathArray("${{ inputs.additional-project-urls }}")
-        for(additionalSnapshot in additionalSnapshots){
-          download.file(
-            # Use Github raw.githubusercontent.com to download snapshot file
-            file.path("https://raw.githubusercontent.com/Open-Systems-Pharmacology", additionalSnapshot), 
-            # Keep only the last name of the path (eg <model name>_Pediatrics.json)
-            destfile = file.path(workingDirectory, basename(additionalSnapshot))
+        if(as.logical("${{ inputs.save-model-file }}")){
+          workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
+          pkSimPath <- normalizePath("PK-Sim/PK-Sim/PKSim.CLI.exe", winslash = "/")
+          cmdLine <- paste(
+            pkSimPath,
+            "snap",
+            # Snapshot file <modelName>.json is in working directory
+            "-i", workingDirectory,
+            "-o", workingDirectory,
+            "-p"
           )
           system(cmdLine)
-          unlink(file.path(workingDirectory, basename(additionalSnapshot)))
+          # For next step, remove potential json from working directory
+          unlink(file.path(workingDirectory, "${{ inputs.snapshot }}.json"))
+          additionalSnapshots <- ospsuite::toPathArray("${{ inputs.additional-project-urls }}")
+          for(additionalSnapshot in additionalSnapshots){
+            download.file(
+              # Use Github raw.githubusercontent.com to download snapshot file
+              file.path("https://raw.githubusercontent.com/Open-Systems-Pharmacology", additionalSnapshot), 
+              # Keep only the last name of the path (eg <model name>_Pediatrics.json)
+              destfile = file.path(workingDirectory, basename(additionalSnapshot))
+            )
+            system(cmdLine)
+            unlink(file.path(workingDirectory, basename(additionalSnapshot)))
+          }
         }
       shell: Rscript {0}
 
