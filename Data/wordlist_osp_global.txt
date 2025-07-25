@@ -4723,3 +4723,10 @@ VERQUVO
 Vertzoni
 Vrenken
 wettability
+API’s
+API
+bioequivalent
+cyclase
+guanylate
+micellization
+stimulator
