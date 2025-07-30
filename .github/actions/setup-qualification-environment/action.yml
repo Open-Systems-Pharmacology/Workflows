@@ -140,10 +140,7 @@ runs:
         }
         unzip("pk-sim-portable-setup.zip", exdir = "PK-Sim")
         unlink("pk-sim-portable-setup.zip")
-        file.rename(
-          from = list.files("PK-Sim", full.names = TRUE),
-          to = file.path("PK-Sim", "PK-Sim")
-          )
+
         # Qualification Runner
         if(is.na(toolsData$`Qualification Runner`$url)){
         qualiRunnerURL <- paste0(
@@ -157,8 +154,5 @@ runs:
         }
         unzip("qualificationrunner.zip", exdir = "QualificationRunner")
         unlink("qualificationrunner.zip")
-        file.rename(
-          from = list.files("QualificationRunner", full.names = TRUE),
-          to = file.path("QualificationRunner", "QualificationRunner")
-          )
+
       shell: Rscript {0}
