@@ -140,7 +140,7 @@ runs:
             toolsData$`PK-Sim`$url, 
             destfile = "pk-sim-portable-setup.zip", 
             mode = "wb", 
-            headers = c("Authorization" = Sys.getenv("GITHUB_PAT"))
+            headers = c("Authorization" = paste("token", Sys.getenv("GITHUB_PAT")))
           )
         }
         unzip("pk-sim-portable-setup.zip", exdir = "PK-Sim")
@@ -159,7 +159,7 @@ runs:
             toolsData$`Qualification Runner`$url, 
             destfile = "qualificationrunner.zip", 
             mode = "wb",
-            headers = c("Authorization" = Sys.getenv("GITHUB_PAT"))
+            headers = c("Authorization" = paste("token", Sys.getenv("GITHUB_PAT")))
           )
         }
         unzip("qualificationrunner.zip", exdir = "QualificationRunner")
