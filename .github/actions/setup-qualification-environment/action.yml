@@ -136,7 +136,12 @@ runs:
             )
           download.file(pkSimURL, destfile = "pk-sim-portable-setup.zip", mode = "wb")
         }else{
-          download.file(toolsData$`PK-Sim`$url, destfile = "pk-sim-portable-setup.zip", mode = "wb")
+          download.file(
+            toolsData$`PK-Sim`$url, 
+            destfile = "pk-sim-portable-setup.zip", 
+            mode = "wb", 
+            headers = c("Authorization" = Sys.getenv("GITHUB_PAT"))
+          )
         }
         unzip("pk-sim-portable-setup.zip", exdir = "PK-Sim")
         unlink("pk-sim-portable-setup.zip")
@@ -146,11 +151,16 @@ runs:
         qualiRunnerURL <- paste0(
           "https://github.com/Open-Systems-Pharmacology/QualificationRunner/releases/download/v",
           toolsData$`Qualification Runner`$version, "/qualificationrunner-portable-setup", 
-          switch(toolsData$`Qualification Runner`$version, "10.0.59" = "", "11.0" = "_11.0.138", "11.1" = "_11.1.130"), ".zip"
+          switch(toolsData$`Qualification Runner`$version, "10.0.59" = "", "11.0" = "_11.0.138", "11.1" = "_11.1.130", toolsData$`Qualification Runner`$version), ".zip"
           )
         download.file(qualiRunnerURL, destfile = "qualificationrunner.zip", mode = "wb")
         }else{
-          download.file(toolsData$`Qualification Runner`$url, destfile = "qualificationrunner.zip", mode = "wb")
+          download.file(
+            toolsData$`Qualification Runner`$url, 
+            destfile = "qualificationrunner.zip", 
+            mode = "wb",
+            headers = c("Authorization" = Sys.getenv("GITHUB_PAT"))
+          )
         }
         unzip("qualificationrunner.zip", exdir = "QualificationRunner")
         unlink("qualificationrunner.zip")
