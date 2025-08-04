@@ -52,6 +52,19 @@ runs:
       name: Install OSPSuite tools
       run: |
         # Function to install an R package in tools.csv
+        downloadFileWithAuthorization <- function(url, destFile, unzipFile = FALSE){
+          download.file(
+            url, 
+            destfile = destFile, 
+            mode = "wb", 
+            headers = c("Authorization" = paste("token", Sys.getenv("GITHUB_PAT")))
+            )
+          if(unzipFile){
+            unzip(destFile)
+            unlink(destFile)
+          }
+          return(invisible())
+        }
         toolInstall <- function(packageInfo){
           # Case when install uses tag or branch
           if(is.na(packageInfo$url)){
@@ -64,9 +77,7 @@ runs:
             return("Package installed")
           }
           # Case when install uses url
-          download.file(packageInfo$url, destfile = packageInfo$zip, mode = "wb")
-          unzip(packageInfo$zip)
-          unlink(packageInfo$zip)
+          downloadFileWithAuthorization(packageInfo$url, packageInfo$zip, unzipFile = TRUE)
           install.packages(list.files(pattern = "zip"), repos = NULL, type = "binary")
           unlink(list.files(pattern = "zip"))
           return("Package installed")
@@ -111,12 +122,12 @@ runs:
             "https://github.com/Open-Systems-Pharmacology/rClr/releases/download/v",
             toolsData$rClr$version, "/rClr_", toolsData$rClr$version, ".zip"
           )
-          download.file(rClrURL, destfile = "rClr.zip", mode = "wb")
+          downloadFileWithAuthorization(rClrURL, "rClr.zip")
           install.packages("rClr.zip", repos = NULL, type = "binary")
           unlink("rClr.zip")
           }
         }else{
-          download.file(toolsData$rClr$url, destfile = "rClr.zip", mode = "wb")
+          downloadFileWithAuthorization(toolsData$rClr$url, "rClr.zip")
           install.packages("rClr.zip", repos = NULL, type = "binary")
           unzip("rClr.zip")
         }
@@ -134,23 +145,31 @@ runs:
             "https://github.com/Open-Systems-Pharmacology/PK-Sim/releases/download/v",
             toolsData$`PK-Sim`$version, "/pk-sim-portable-setup.zip"
             )
-          download.file(pkSimURL, destfile = "pk-sim-portable-setup.zip", mode = "wb")
+          downloadFileWithAuthorization(pkSimURL, "pk-sim-portable-setup.zip")
         }else{
-          download.file(toolsData$`PK-Sim`$url, destfile = "pk-sim-portable-setup.zip", mode = "wb")
+          downloadFileWithAuthorization(toolsData$`PK-Sim`$url, "pk-sim-portable-setup.zip")
         }
         unzip("pk-sim-portable-setup.zip", exdir = "PK-Sim")
         unlink("pk-sim-portable-setup.zip")
 
         # Qualification Runner
         if(is.na(toolsData$`Qualification Runner`$url)){
-        qualiRunnerURL <- paste0(
-          "https://github.com/Open-Systems-Pharmacology/QualificationRunner/releases/download/v",
-          toolsData$`Qualification Runner`$version, "/qualificationrunner-portable-setup", 
-          switch(toolsData$`Qualification Runner`$version, "10.0.59" = "", "11.0" = "_11.0.138", "11.1" = "_11.1.130"), ".zip"
+          qualiRunnerURL <- paste0(
+            "https://github.com/Open-Systems-Pharmacology/QualificationRunner/releases/download/v",
+            toolsData$`Qualification Runner`$version, "/qualificationrunner-portable-setup", 
+            switch(
+              toolsData$`Qualification Runner`$version, 
+              "10.0.59" = "", 
+              "11.0" = "_11.0.138", 
+              "11.1" = 
+              "_11.1.130", 
+              paste0("_", toolsData$`Qualification Runner`$version)
+            ), 
+            ".zip"
           )
-        download.file(qualiRunnerURL, destfile = "qualificationrunner.zip", mode = "wb")
+          downloadFileWithAuthorization(qualiRunnerURL, "qualificationrunner.zip")
         }else{
-          download.file(toolsData$`Qualification Runner`$url, destfile = "qualificationrunner.zip", mode = "wb")
+          downloadFileWithAuthorization(toolsData$`Qualification Runner`$url, "qualificationrunner.zip")
         }
         unzip("qualificationrunner.zip", exdir = "QualificationRunner")
         unlink("qualificationrunner.zip")

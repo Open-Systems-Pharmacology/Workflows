@@ -46,6 +46,18 @@ The following available tools to installed are detailed below:
 - [__PK-Sim__](https://github.com/Open-Systems-Pharmacology/PK-Sim): Portable version of the comprehensive software tool for whole-body physiologically based pharmacokinetic modeling
 
 
+### GitHub artifacts
+
+Users can download a specific version from GitHub artifacts using the `URL` column.
+However the `URL` link needs to follow a specific pattern different from the pattern obtained when downloading manually on GitHub.
+
+The url pattern to provide in `tools.csv` needs to be: __`https://api.github.com/repos/<owner>/<repo>/actions/artifacts/<artifact-id>/zip`__.
+
+For example, in order to download PK-Sim portable version __12.1__ obtained from run __16535531628__ with artifact ID __3620035157__:
+
+- manual download would use:<br>`https://github.com/Open-Systems-Pharmacology/PK-Sim/actions/runs/16535531628/artifacts/3620035157`
+- but url provided to `tools.csv` would use:<br>`https://api.github.com/repos/Open-Systems-Pharmacology/PK-Sim/actions/artifacts/3620035157/zip`
+  
 ## Outputs
 
 The action exports `tools-table` corresponding to the markdown formatted version of the table defined by the csv file
