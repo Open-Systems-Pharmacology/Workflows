@@ -35,17 +35,9 @@ runs:
     - id: tools-versions
       name: Export versions of certain tools
       run: |
-        # Read header
-        IFS=',' read -r col1 col2 col3 < "${{ inputs.tools-path }}"
-        echo "$col1"
-        echo "$col2"
-        echo "$col3"
         # Process each line after header assumes columns are Name, Version and URL
         tail -n +2 "${{ inputs.tools-path }}" | while IFS=',' read -r val1 val2 val3
         do
-          echo "$val1"
-          echo "$val2"
-          echo "$val3"
           # Save versions corresponding to appropriate name
           if [[ "$val1" == "PK-Sim" ]]; then
             echo "pk-sim=$val2" >> $GITHUB_OUTPUT
@@ -76,7 +68,7 @@ runs:
         # Process each line and convert to JSON
         tail -n +2 "${{ inputs.tools-path }}" | while IFS=',' read -r val1 val2 val3
         do
-          echo "{\"$col1\": \"$val1\", \"$col2\": \"$val2\", \"$col3\": \"$val3\"}"
+          echo '{"$col1": "$val1", "$col2": "$val2", "$col3": "$val3"}'
         done | jq -s '.' > "tools.json"
       shell: bash
 
