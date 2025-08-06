@@ -69,7 +69,7 @@ runs:
         tail -n +2 "${{ inputs.tools-path }}" | while IFS=',' read -r val1 val2 val3
         echo "{\"$col1\": \"$val1\", \"$col2\": \"$val2\", \"$col3\": \"$val3\"}"
         do
-          echo "{\"$col1\": \"$val1\", \"$col2\": \"$val2\", \"$col3\": \"$val3\"}"
+          echo "{\"col1\": \"val1\", \"col2\": \"val2\", \"col3\": \"val3\"}"
         done | jq -s '.' > "tools.json"
       shell: bash
 
