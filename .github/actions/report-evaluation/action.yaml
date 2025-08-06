@@ -9,7 +9,6 @@ inputs:
   model-version:
     description: 'Tag or branch version of the model OSP repository'
     required: true
-    default: '1.0'
   folder-name:
     description: 'Name of the directory in which the report is created'
     required: true
@@ -28,12 +27,10 @@ inputs:
     required: false
   pk-sim-version: 
     description: 'Version of PK-Sim'
-    required: false
-    default: '11.3.208'
+    required: true
   qualification-framework-version:
     description: 'Version of the Qualification Framework'
-    required: false
-    default: '3.2'
+    required: true
   save-model-file:
     description: 'Save pksim5 model file'
     required: true
