@@ -9,9 +9,11 @@ inputs:
   model-version:
     description: 'Tag or branch version of the model OSP repository'
     required: true
-    default: '1.0'
+  folder-name:
+    description: 'Name of the directory in which the report is created'
+    required: true
   snapshot:
-    description: 'For evaluation, name of the snapshot (.json) file. For simple qualification, name of the directory to create.'
+    description: 'For evaluation, name of the snapshot (.json) file.'
     required: true
   evaluation:
     description: 'Does the script run an evaluation ?'
@@ -25,12 +27,10 @@ inputs:
     required: false
   pk-sim-version: 
     description: 'Version of PK-Sim'
-    required: false
-    default: '11.3.208'
+    required: true
   qualification-framework-version:
     description: 'Version of the Qualification Framework'
-    required: false
-    default: '3.2'
+    required: true
   save-model-file:
     description: 'Save pksim5 model file'
     required: true
@@ -63,14 +63,14 @@ runs:
       with:
         repo: ${{ inputs.model-repo }}
         version: ${{ inputs.model-version }}
-        extract-path: ${{ inputs.run-directory }}/${{ inputs.snapshot }}
+        extract-path: ${{ inputs.run-directory }}/${{ inputs.folder-name }}
     
     - id: run-evaluation
       name: Run evaluation
       run: |
         qualificationRunnerFolder <- normalizePath("QualificationRunner", winslash = "/")
         pkSimPortableFolder <- normalizePath("PK-Sim", winslash = "/")
-        workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
+        workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.folder-name }}", winslash = "/")
         # Load library and clear simulation cache in case
         library(ospsuite.reportingengine)
         ospsuite::clearMemory(clearSimulationsCache = TRUE)
@@ -101,7 +101,7 @@ runs:
         setwd(workingDirectory)
         reportPaths <- list.files(pattern = "report.md", recursive = TRUE, full.names = TRUE, ignore.case = TRUE)
         isEvaluation <- as.logical("${{ inputs.evaluation }}")
-        newReportPath <- ifelse(isEvaluation, "${{ inputs.snapshot }}_evaluation_report.md", "report.md")
+        newReportPath <- ifelse(isEvaluation, "${{ inputs.folder-name }}_evaluation_report.md", "report.md")
         copyReport(
           from = tail(reportPaths, 1), 
           to = newReportPath, 
@@ -114,11 +114,11 @@ runs:
       name: Convert to pdf
       run: |
         if(as.logical("${{ inputs.save-pdf }}")){
-          workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
+          workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.folder-name }}", winslash = "/")
           isEvaluation <- as.logical("${{ inputs.evaluation }}")
           reportPath <- file.path(
             workingDirectory,
-            ifelse(isEvaluation, "${{ inputs.snapshot }}_evaluation_report.md", "report.md")
+            ifelse(isEvaluation, "${{ inputs.folder-name }}_evaluation_report.md", "report.md")
           )
           # Convert to html using css, TODO find a better permanent url to store css
           download.file(
@@ -159,7 +159,7 @@ runs:
       name: Convert to pksim5 model files
       run: |
         if(as.logical("${{ inputs.save-model-file }}")){
-          workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.snapshot }}", winslash = "/")
+          workingDirectory <- normalizePath("${{ inputs.run-directory }}/${{ inputs.folder-name }}", winslash = "/")
           pkSimPath <- normalizePath("PK-Sim/PKSim.CLI.exe", winslash = "/")
           cmdLine <- paste(
             pkSimPath,
@@ -191,6 +191,6 @@ runs:
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: failed-${{ inputs.snapshot }}
+        name: failed-${{ inputs.model-repo }}-${{ inputs.model-version }}
         path: |
           ${{ inputs.run-directory }}/**
