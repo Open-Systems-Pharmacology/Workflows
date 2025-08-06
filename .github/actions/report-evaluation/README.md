@@ -37,7 +37,7 @@ Run and report the evaluation or qualification of PBPK model.
 | `model-repo` | `true` | | Name of Github OSP repository from which to get the Model |
 | `model-version` | `true` | | Tag or branch version of the model OSP repository |
 | `folder-name` | `true` | | Name of the directory in which the report is created. |
-| `snapshot` | `true` | `model-repo` | For evaluation, name of the snapshot (.json) file. |
+| `snapshot` | `true` | | For evaluation, name of the snapshot (.json) file. |
 | `evaluation` | `false` | `'true'` | Does the script run an evaluation ? |
 | `workflow-script` | `false` | `NULL` | Path of workflow R script that creates the function to run the qualification if not default<br>(default corresponds to case insensitive `evaluation/workflow.R` path). |
 | `additional-project-urls` | `false` | `NULL` | URL of additional project snapshots to export as pksim5 projects.<br>If multiple projects are exported, they need to be separated by a pipe character: `|` |
