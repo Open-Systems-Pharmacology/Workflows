@@ -19,19 +19,24 @@ runs:
     - id: install-pandoc
       name: Install Pandoc for html and word conversion
       uses: r-lib/actions/setup-pandoc@v2
+
+    - id: get-tools
+      name: Get tools input
+      uses: pchelle/Workflows/actions/setup-qualification-environment@118_tools
+        with:
+          tools-path: '${{ inputs.tools-path }}'
       
     - id: install-r
       name: Setup R
       uses: r-lib/actions/setup-r@v2
       with:
-        r-version: '4.3.1'
+        r-version: '${{ steps.get-tools.outputs.r }}'
         use-public-rspm: true
         
     - id: check-tools
       name: Check tools input
       run: |
-        toolsData <- read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = "character")
-        print(toolsData)
+        print(read.csv("${{ inputs.tools-path }}", stringsAsFactors = FALSE, colClasses = rep("character", 3)))
       shell: Rscript {0}
     
     - id: install-cran-packages
