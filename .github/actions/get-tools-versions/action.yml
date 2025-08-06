@@ -75,7 +75,7 @@ runs:
     - id: tools-data
       name: Output tools data for table conversion
       run: |
-        echo "json=$(cat tools.json)" >> $GITHUB_OUTPUT
+        echo "json=$(jq -c . tools.json)" >> $GITHUB_OUTPUT
       shell: bash
 
     - id: tools-table
