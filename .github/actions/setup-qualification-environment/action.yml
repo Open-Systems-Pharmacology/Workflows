@@ -23,8 +23,8 @@ runs:
     - id: get-tools
       name: Get tools input
       uses: pchelle/Workflows/.github/actions/get-tools-versions@118_tools
-        with:
-          tools-path: '${{ inputs.tools-path }}'
+      with:
+        tools-path: '${{ inputs.tools-path }}'
       
     - id: install-r
       name: Setup R
