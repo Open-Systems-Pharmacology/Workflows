@@ -71,7 +71,7 @@ runs:
         do
           val3=$(echo "$val3" | tr -d '\r\n')
           echo "{\"$col1\": \"$val1\", \"$col2\": \"$val2\", \"$col3\": \"$val3\"}"
-        done
+        done | jq -s '.' > "tools.json"
       shell: bash
 
     - id: tools-data
