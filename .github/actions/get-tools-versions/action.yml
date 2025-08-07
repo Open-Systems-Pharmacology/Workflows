@@ -35,6 +35,8 @@ runs:
     - id: tools-versions
       name: Export versions of certain tools
       run: |
+        # Default R version
+        echo "r=latest" >> $GITHUB_OUTPUT
         # Process each line after header assumes columns are Name, Version and URL
         tail -n +2 "${{ inputs.tools-path }}" | while IFS=',' read -r val1 val2 val3
         do
