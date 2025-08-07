@@ -22,7 +22,7 @@ runs:
 
     - id: get-tools
       name: Get tools input
-      uses: pchelle/Workflows/actions/setup-qualification-environment@118_tools
+      uses: pchelle/Workflows/.github/actions/get-tools-versions@118_tools
         with:
           tools-path: '${{ inputs.tools-path }}'
       
