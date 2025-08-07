@@ -8,20 +8,29 @@ inputs:
     required: true
 outputs:
   pk-sim: 
-    description: "PK Sim Version"
+    description: "PK Sim version"
     value: ${{ steps.tools-versions.outputs.pk-sim  }}
   qualification-framework: 
-    description: "Qualification framework version"
+    description: "Qualification Framework version"
     value: ${{ steps.tools-versions.outputs.qualification-framework  }}
+  qualification-runner:
+    description: "Qualification Runner version"
+    value: ${{ steps.tools-versions.outputs.qualification-runner  }}
   ospsuite-r: 
     description: "OSPSuite-R package version"
     value: ${{ steps.tools-versions.outputs.ospsuite-r  }}
   reporting-engine: 
     description: "OSPSuite.ReportingEngine R package version"
     value: ${{ steps.tools-versions.outputs.reporting-engine  }}
+  rutils:
+    description: "OSPSuite.RUtils R package version"
+    value: ${{ steps.tools-versions.outputs.rutils  }}
   tlf: 
     description: "TLF-Library R package version"
     value: ${{ steps.tools-versions.outputs.tlf  }}
+  rsharp: 
+    description: "rSharp R package version"
+    value: ${{ steps.tools-versions.outputs.rsharp  }}
   r: 
     description: "R version"
     value: ${{ steps.tools-versions.outputs.r  }}
@@ -47,14 +56,23 @@ runs:
           if [[ "$val1" == "Qualification Framework" ]]; then
             echo "qualification-framework=$val2" >> $GITHUB_OUTPUT
           fi
+          if [[ "$val1" == "Qualification Runner" ]]; then
+            echo "qualification-runner=$val2" >> $GITHUB_OUTPUT
+          fi
           if [[ "$val1" == "ospsuite-R" ]]; then
             echo "ospsuite-r=$val2" >> $GITHUB_OUTPUT
           fi
           if [[ "$val1" == "Reporting Engine" ]]; then
             echo "reporting-engine=$val2" >> $GITHUB_OUTPUT
           fi
+          if [[ "$val1" == "RUtils" ]]; then
+            echo "rutils=$val2" >> $GITHUB_OUTPUT
+          fi
           if [[ "$val1" == "TLF" ]]; then
             echo "tlf=$val2" >> $GITHUB_OUTPUT
+          fi
+          if [[ "$val1" == "rSharp" ]]; then
+            echo "rsharp=$val2" >> $GITHUB_OUTPUT
           fi
           if [[ "$val1" == "R" ]]; then
             echo "r=$val2" >> $GITHUB_OUTPUT
