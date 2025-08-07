@@ -34,7 +34,11 @@ __`tools-path`__: Path a csv file defining the tools and versions to install
 
 - __`tools-table`__: Markdown table corresponding to csv tools information
 - __`pk-sim`__: PK-Sim version
-- __`qualification-framework`__: Qualification framework version
+- __`qualification-framework`__: Qualification framework version qualification-runner
+- __`qualification-runner`__: Qualification Runner version
 - __`ospsuite-r`__: OSPSuite-R package version
 - __`reporting-engine`__: OSPSuite.ReportingEngine R package version
+- __`rutils`__: OSPSuite.RUtils R package version
 - __`tlf`__: TLF-Library R package version
+- __`rsharp`__: rSharp R package version
+- __`r`__: R package version

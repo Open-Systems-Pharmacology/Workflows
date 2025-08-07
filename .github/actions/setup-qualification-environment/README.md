@@ -44,6 +44,7 @@ The following available tools to installed are detailed below:
 - [__Qualification Runner__](https://github.com/Open-Systems-Pharmacology/QualificationRunner): Qualification runner in charge of managing a qualification workflow
 - [__Qualification Framework__](https://docs.open-systems-pharmacology.org/shared-tools-and-example-workflows/qualification): Enables an automated validation of various scenarios (use-cases) supported by the OSP platform
 - [__PK-Sim__](https://github.com/Open-Systems-Pharmacology/PK-Sim): Portable version of the comprehensive software tool for whole-body physiologically based pharmacokinetic modeling
+- [__R__](https://github.com/r-lib/actions/tree/v2-branch/setup-r#inputs): R version optional
 
 
 ### GitHub artifacts
