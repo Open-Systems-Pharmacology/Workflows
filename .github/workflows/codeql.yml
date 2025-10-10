@@ -20,4 +20,4 @@ jobs:
       security-events: write
       packages: read
     with:
-      languages: '["python"]' # "python" also covers "actions"
+      languages: '["actions"]'
