@@ -1,0 +1,23 @@
+name: "CodeQL Advanced"
+# Check GitHub Actions/Workflows and python scripts in THIS repository for security issues using GitHub CodeQL.
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+  workflow_dispatch:
+  schedule:
+    - cron: '40 3 * * 5' # Runs at 03:40 every friday
+
+jobs:
+  codeql:
+    uses: ./.github/workflows/GitHub_CodeQL.yml
+    permissions:
+      # Match permissions required by the reusable workflow
+      security-events: write
+      packages: read
+    with:
+      languages: '["python"]' # "python" also covers "actions"
