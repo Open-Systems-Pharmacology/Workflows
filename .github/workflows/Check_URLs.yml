@@ -1,0 +1,35 @@
+---
+name: Check URLs 
+
+on:
+    workflow_call:
+  
+concurrency:
+  group: links-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  links:
+    name: Check Links
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Check URLs 
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --verbose
+            --no-progress
+            **/*.md
+            **/*.Rmd
+            **/*.html
+            **/*.yaml
+            **/*.yml
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
