@@ -4932,3 +4932,5 @@ Moradi
 Motahar
 Taki
 Wiesner
+synthase
+Synthase
