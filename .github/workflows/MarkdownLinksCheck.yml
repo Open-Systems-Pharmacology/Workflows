@@ -20,7 +20,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - run: |
         wget --no-check-certificate https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/main/Config/mlc_config.json
-    - uses: gaurav-nelson/github-action-markdown-link-check@v1
+    - uses: tcort/github-action-markdown-link-check@v1
       with:
         use-quiet-mode: 'yes'
         use-verbose-mode: 'yes'
