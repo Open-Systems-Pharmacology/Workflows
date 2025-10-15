@@ -28,7 +28,6 @@ jobs:
             **/*.md
             **/*.Rmd
             **/*.html
-            **/*.Rmd
             **/*.yaml
             **/*.yml
           fail: true
