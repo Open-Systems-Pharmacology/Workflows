@@ -4947,3 +4947,7 @@ SCM
 trainings
 whitepapers
 wiley
+Codespaces
+codespaces
+Codespace
+codespace
