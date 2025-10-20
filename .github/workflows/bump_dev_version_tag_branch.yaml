@@ -99,22 +99,23 @@ jobs:
       - name: Change DESCRIPTION file
         shell: Rscript {0}
         run: |
-          if(usethis:::is_dev_version()){
-            # bump dev version
-            desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
-
-            # clean Remotes section
-            remotes<-desc::desc_get_remotes()
-            remotes<-gsub("@\\*release","",remotes)
-            desc::desc_set_remotes(remotes)
+          if (usethis:::is_dev_version()) {
+              # bump dev version
+              desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
+              # clean Remotes section
+              remotes <- desc::desc_get_remotes()
+              remotes <- gsub("@\\*release\\s*$", "", remotes)
+              desc::desc_set_remotes(remotes)
           } else {
-
-            # pin Remotes to the latest release version
-            remotes<-desc::desc_get_remotes()
-            remotes<-paste0(remotes,"@*release")
-            desc::desc_set_remotes(remotes)
-          }
-
+          
+              # pin Remotes to the latest release version only if not already pinned
+              remotes <- desc::desc_get_remotes()
+              remotes <- ifelse(grepl("@\\*release\\s*$", remotes),
+                        remotes,
+                        paste0(sub("\\s+$","", remotes), "@*release"))
+              desc::desc_set_remotes(remotes)
+          }    
+      
       - name: Get package version from DESCRIPTION file and set as environment variable
         shell: bash
         run: |
