@@ -1,6 +1,7 @@
 ---
 # This reusable workflow will, if triggered by a merge:
-#  - Bump version if the current version is development (x.y.z.9000+) & if functionnal changes are detected.
+#  - Bump version if the current version is development (x.y.z.9000+) & if functional changes are detected.
+#  - Specify Remotes to point to @*release versions for the current package released version
 #  - Tag the target branch with version number
 name: bump-dev-version
 
