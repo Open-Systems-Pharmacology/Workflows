@@ -4952,3 +4952,13 @@ codespaces
 Codespace
 codespace
 macOS
+CVE
+detections
+GHAS
+MSI
+msi
+rescan
+SAST
+SCA
+SHA
+VirusTotal
