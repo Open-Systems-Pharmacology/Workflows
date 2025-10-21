@@ -1,5 +1,7 @@
+---
 # This reusable workflow will, if triggered by a merge:
-#  - Bump version if the current version is development (x.y.z.9000+) & if functionnal changes are detected.
+#  - Bump version if the current version is development (x.y.z.9000+) & if functional changes are detected.
+#  - Specify Remotes to point to @*release versions for the current package released version
 #  - Tag the target branch with version number
 name: bump-dev-version
 
@@ -95,26 +97,39 @@ jobs:
         shell: Rscript {0}
 
       - name: Change DESCRIPTION file
-        run: |
-          if(usethis:::is_dev_version()){
-            desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
-          }
         shell: Rscript {0}
-
+        run: |
+          if (usethis:::is_dev_version()) {
+              # bump dev version
+              desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
+              # switch Remotes to dev version
+              remotes <- desc::desc_get_remotes()
+              remotes <- gsub("@\\*release\\s*$", "", remotes)
+              desc::desc_set_remotes(remotes)
+          } else {
+          
+              # pin Remotes to the latest release version only if not already pinned
+              remotes <- desc::desc_get_remotes()
+              remotes <- ifelse(grepl("@\\*release\\s*$", remotes),
+                        remotes,
+                        paste0(sub("\\s+$","", remotes), "@*release"))
+              desc::desc_set_remotes(remotes)
+          }    
+      
       - name: Get package version from DESCRIPTION file and set as environment variable
+        shell: bash
         run: |
             echo "PKG_VERSION=$(Rscript -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
-        shell: bash
 
       - uses: EndBug/add-and-commit@v9
-        if: ${{ success() }}
+        if: success()
         with:
           message: '🤖 Bump version. [skip actions]'
           default_author: github_actions
           add: 'DESCRIPTION'
 
       - uses: thejeff77/action-push-tag@v1.0.0
-        if: ${{ success() }}
+        if: success()
         with:
           tag: v${{ env.PKG_VERSION }}
           force: true
