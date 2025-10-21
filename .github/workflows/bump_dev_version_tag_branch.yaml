@@ -102,7 +102,7 @@ jobs:
           if (usethis:::is_dev_version()) {
               # bump dev version
               desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
-              # clean Remotes section
+              # switch Remotes to dev version
               remotes <- desc::desc_get_remotes()
               remotes <- gsub("@\\*release\\s*$", "", remotes)
               desc::desc_set_remotes(remotes)
