@@ -2,6 +2,12 @@
 
 on:
   workflow_call:
+    inputs:
+      ignore-renv:
+        description: 'Skip renv setup if set to true'
+        required: false
+        type: boolean
+        default: false
 
 name: R-CMD-check
 
@@ -47,11 +53,11 @@ jobs:
           fi
 
       - name: Setup renv
-        if: steps.check-renv.outputs.renv_detected == 'true'
+        if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != true
         uses: r-lib/actions/setup-renv@v2
 
       - name: Setup R dependencies
-        if: steps.check-renv.outputs.renv_detected == 'false'
+        if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == true
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           cache: false
@@ -70,7 +76,7 @@ jobs:
           error-on: 'c("error")'
 
       - name: Install required packages for next steps (if using renv)
-        if: steps.check-renv.outputs.renv_detected == 'true'
+        if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != true
         run: |
           required_packages <- c("rcmdcheck", "devtools", "pkgload", "desc")
           missing_packages <- required_packages[!required_packages %in% rownames(installed.packages())]
