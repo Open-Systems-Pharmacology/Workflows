@@ -35,24 +35,55 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Check for renv.lock
+        id: check-renv
+        run: |
+          if [ -f "renv.lock" ]; then
+            echo "renv_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "renv_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup renv
+        if: steps.check-renv.outputs.renv_detected == 'true'
+        uses: r-lib/actions/setup-renv@v2
+
+      - name: Setup R dependencies
+        if: steps.check-renv.outputs.renv_detected == 'false'
+        uses: r-lib/actions/setup-r-dependencies@v2
         with:
           cache: false
           extra-packages: |
             any::rcmdcheck
+            any::devtools
+            any::pkgload
+            any::desc
 
-      - uses: r-lib/actions/check-r-package@v2
+      - name: Check R package
+        uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
           args: 'c("--no-manual", "--no-vignettes")'
           build_args: 'c("--no-manual", "--no-build-vignettes")'
           error-on: 'c("error")'
 
+      - name: Install required packages for next steps (if using renv)
+        if: steps.check-renv.outputs.renv_detected == 'true'
+        run: |
+          required_packages <- c("rcmdcheck", "devtools", "pkgload", "desc")
+          missing_packages <- required_packages[!required_packages %in% rownames(installed.packages())]
+          if (length(missing_packages) > 0) {
+            renv::install(
+              missing_packages,
+              update = FALSE # avoid updating packages already installed by renv::restore()
+            )
+          }
+        shell: Rscript {0}
+
       - name: Build package
-        if: ${{ success() }}
+        if: success()
         run: |
           output_dir <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "built_package")
           dir.create(output_dir)
@@ -68,7 +99,7 @@ jobs:
         shell: bash
 
       - name: Upload built package
-        if: ${{ success() }}
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PKG_NAME }}-v${{ env.PKG_VERSION }}-${{runner.os}}-r_${{ env.R_VERSION }}
