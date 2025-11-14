@@ -1,0 +1,31 @@
+name: 'Setup R environment (renv or dependencies)'
+description: 'Detects renv.lock and sets up either renv or R dependencies accordingly'
+
+inputs:
+  ignore-renv:
+    description: 'Skip renv setup if set to true'
+    required: false
+    default: 'false'
+
+outputs:
+  renv_detected:
+    description: 'Whether renv.lock was detected'
+    value: ${{ steps.check-renv.outputs.renv_detected }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check for renv.lock
+      id: check-renv
+      run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Setup renv
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
+      uses: r-lib/actions/setup-renv@v2
+
+    - name: Setup R dependencies
+      if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
+      uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        cache: false

@@ -43,21 +43,14 @@ jobs:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
-      - name: Check for renv.lock
-        id: check-renv
-        run: |
-          if [ -f "renv.lock" ]; then
-            echo "renv_detected=true" >> $GITHUB_OUTPUT
-          else
-            echo "renv_detected=false" >> $GITHUB_OUTPUT
-          fi
+      - name: Setup R environment
+        id: setup-r-env
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
+        with:
+          ignore-renv: ${{ inputs.ignore-renv }}
 
-      - name: Setup renv
-        if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != true
-        uses: r-lib/actions/setup-renv@v2
-
-      - name: Setup R dependencies
-        if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == true
+      - name: Setup R dependencies (if not using renv)
+        if: steps.setup-r-env.outputs.renv_detected == 'false' || inputs.ignore-renv == true
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           cache: false
@@ -76,7 +69,7 @@ jobs:
           error-on: 'c("error")'
 
       - name: Install required packages for next steps (if using renv)
-        if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != true
+        if: steps.setup-r-env.outputs.renv_detected == 'true' && inputs.ignore-renv != true
         run: |
           required_packages <- c("rcmdcheck", "devtools", "pkgload", "desc")
           missing_packages <- required_packages[!required_packages %in% rownames(installed.packages())]

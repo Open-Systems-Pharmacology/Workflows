@@ -1,12 +1,18 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 
 on:
-    workflow_call:
-      secrets:
-        CODECOV_TOKEN:
-            required: true
-        
-name: test-coverage
+  workflow_call:
+    inputs:
+      ignore-renv:
+        description: 'Skip renv setup if set to true'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        required: true
+
+name: Test coverage
 
 permissions: read-all
 
@@ -22,13 +28,22 @@ jobs:
           ref: ${{ github.ref }}
 
       - uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Setup R environment
+        id: setup-r-env
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
-          extra-packages: any::covr, any::xml2
-          needs: coverage
+          ignore-renv: ${{ inputs.ignore-renv }}
+
+      - name: Install extra packages
+        run: |
+          if (!requireNamespace("covr", quietly = TRUE)) {
+            install.packages("covr")
+          }
+          if (!requireNamespace("xml2", quietly = TRUE)) {
+            install.packages("xml2")
+          }
+        shell: Rscript {0}
 
       - name: Test coverage
         run: |
