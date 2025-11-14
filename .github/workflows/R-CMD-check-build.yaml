@@ -49,17 +49,6 @@ jobs:
         with:
           ignore-renv: ${{ inputs.ignore-renv }}
 
-      - name: Setup R dependencies (if not using renv)
-        if: steps.setup-r-env.outputs.renv_detected == 'false' || inputs.ignore-renv == true
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          cache: false
-          extra-packages: |
-            any::rcmdcheck
-            any::devtools
-            any::pkgload
-            any::desc
-
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
         with:
@@ -68,16 +57,12 @@ jobs:
           build_args: 'c("--no-manual", "--no-build-vignettes")'
           error-on: 'c("error")'
 
-      - name: Install required packages for next steps (if using renv)
-        if: steps.setup-r-env.outputs.renv_detected == 'true' && inputs.ignore-renv != true
+      - name: Install extra packages
         run: |
-          required_packages <- c("rcmdcheck", "devtools", "pkgload", "desc")
-          missing_packages <- required_packages[!required_packages %in% rownames(installed.packages())]
-          if (length(missing_packages) > 0) {
-            renv::install(
-              missing_packages,
-              update = FALSE # avoid updating packages already installed by renv::restore()
-            )
+          packages <- c("rcmdcheck", "devtools", "pkgload", "desc")
+          missing <- packages[!packages %in% rownames(installed.packages())]
+          if (length(missing) > 0) {
+            install.packages(missing)
           }
         shell: Rscript {0}
 
@@ -91,10 +76,11 @@ jobs:
         shell: Rscript {0}
 
       - name: Get package name, version and R versions and store in environment
+        if: success()
         run: |
-          echo "PKG_NAME=$(Rscript -e 'cat(pkgload::pkg_name())')" >>  $GITHUB_ENV
-          echo "PKG_VERSION=$(Rscript -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
-          echo "R_VERSION=$(Rscript -e 'cat(R.version$major, R.version$minor, sep = ".")')" >> $GITHUB_ENV
+          echo "PKG_NAME=$(Rscript --vanilla -e 'cat(pkgload::pkg_name())')" >>  $GITHUB_ENV
+          echo "PKG_VERSION=$(Rscript --vanilla -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
+          echo "R_VERSION=$(Rscript --vanilla -e 'cat(R.version$major, R.version$minor, sep = ".")')" >> $GITHUB_ENV
         shell: bash
 
       - name: Upload built package
