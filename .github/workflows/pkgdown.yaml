@@ -1,8 +1,14 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 
 on:
-    workflow_call:
-  
+  workflow_call:
+    inputs:
+      ignore-renv:
+        description: 'Skip renv setup if set to true'
+        required: false
+        type: boolean
+        default: false
+
 name: pkgdown
 
 jobs:
@@ -23,13 +29,23 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Setup R environment
+        id: setup-r-env
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
-          extra-packages: any::pkgdown, local::.
-          needs: website
+          ignore-renv: ${{ inputs.ignore-renv }}
+
+      - name: Install extra packages
+        run: |
+          if (!requireNamespace("pkgdown", quietly = TRUE)) {
+            install.packages("pkgdown")
+          }
+          if (!requireNamespace("devtools", quietly = TRUE)) {
+            install.packages("devtools")
+          }
+          devtools::install(".", upgrade = "never")
+        shell: Rscript {0}
 
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)

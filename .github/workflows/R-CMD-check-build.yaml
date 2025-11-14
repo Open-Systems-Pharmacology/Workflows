@@ -2,6 +2,12 @@
 
 on:
   workflow_call:
+    inputs:
+      ignore-renv:
+        description: 'Skip renv setup if set to true'
+        required: false
+        type: boolean
+        default: false
 
 name: R-CMD-check
 
@@ -35,24 +41,33 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Setup R environment
+        id: setup-r-env
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
-          cache: false
-          extra-packages: |
-            any::rcmdcheck
+          ignore-renv: ${{ inputs.ignore-renv }}
 
-      - uses: r-lib/actions/check-r-package@v2
+      - name: Check R package
+        uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
           args: 'c("--no-manual", "--no-vignettes")'
           build_args: 'c("--no-manual", "--no-build-vignettes")'
           error-on: 'c("error")'
 
+      - name: Install extra packages
+        run: |
+          packages <- c("rcmdcheck", "devtools", "pkgload", "desc")
+          missing <- packages[!packages %in% rownames(installed.packages())]
+          if (length(missing) > 0) {
+            install.packages(missing)
+          }
+        shell: Rscript {0}
+
       - name: Build package
-        if: ${{ success() }}
+        if: success()
         run: |
           output_dir <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "built_package")
           dir.create(output_dir)
@@ -61,14 +76,15 @@ jobs:
         shell: Rscript {0}
 
       - name: Get package name, version and R versions and store in environment
+        if: success()
         run: |
-          echo "PKG_NAME=$(Rscript -e 'cat(pkgload::pkg_name())')" >>  $GITHUB_ENV
-          echo "PKG_VERSION=$(Rscript -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
-          echo "R_VERSION=$(Rscript -e 'cat(R.version$major, R.version$minor, sep = ".")')" >> $GITHUB_ENV
+          echo "PKG_NAME=$(Rscript --vanilla -e 'cat(pkgload::pkg_name())')" >> $GITHUB_ENV
+          echo "PKG_VERSION=$(Rscript --vanilla -e 'cat(as.character(desc::desc_get_version()))')" >> $GITHUB_ENV
+          echo "R_VERSION=$(Rscript --vanilla -e 'cat(R.version$major, R.version$minor, sep = ".")')" >> $GITHUB_ENV
         shell: bash
 
       - name: Upload built package
-        if: ${{ success() }}
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PKG_NAME }}-v${{ env.PKG_VERSION }}-${{runner.os}}-r_${{ env.R_VERSION }}
