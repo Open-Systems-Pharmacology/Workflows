@@ -100,22 +100,24 @@ jobs:
         shell: Rscript {0}
         run: |
           if (usethis:::is_dev_version()) {
-              # bump dev version
-              desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
-              # switch Remotes to dev version
+            # bump dev version
+            desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
+            # adjust Remotes only if it exists
+            if (desc::desc_has_fields("Remotes")) {
               remotes <- desc::desc_get_remotes()
               remotes <- gsub("@\\*release\\s*$", "", remotes)
               desc::desc_set_remotes(remotes)
+            }
           } else {
-          
-              # pin Remotes to the latest release version only if not already pinned
+            # pin Remotes to latest release only if field exists
+            if (desc::desc_has_fields("Remotes")) {
               remotes <- desc::desc_get_remotes()
               remotes <- ifelse(grepl("@\\*release\\s*$", remotes),
-                        remotes,
-                        paste0(sub("\\s+$","", remotes), "@*release"))
+                                remotes,
+                                paste0(sub("\\s+$","", remotes), "@*release"))
               desc::desc_set_remotes(remotes)
+            }
           }    
-      
       - name: Get package version from DESCRIPTION file and set as environment variable
         shell: bash
         run: |
