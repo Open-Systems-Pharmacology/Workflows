@@ -78,8 +78,8 @@ jobs:
       - name: Get package name, version and R versions and store in environment
         if: success()
         run: |
-          echo "PKG_NAME=$(grep '^Package:' DESCRIPTION | sed 's/^Package: *//')" >> $GITHUB_ENV
-          echo "PKG_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/^Version: *//')" >> $GITHUB_ENV
+          echo "PKG_NAME=$(grep '^Package:' DESCRIPTION | sed 's/^Package:[[:space:]]*//')" >> $GITHUB_ENV
+          echo "PKG_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')" >> $GITHUB_ENV
           echo "R_VERSION=$(Rscript --vanilla -e 'cat(R.version$major, R.version$minor, sep = ".")')" >> $GITHUB_ENV
         shell: bash
 

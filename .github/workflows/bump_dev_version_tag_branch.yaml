@@ -121,7 +121,7 @@ jobs:
       - name: Get package version from DESCRIPTION file and set as environment variable
         shell: bash
         run: |
-            echo "PKG_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/^Version: *//')" >> $GITHUB_ENV
+            echo "PKG_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')" >> $GITHUB_ENV
 
       - uses: EndBug/add-and-commit@v9
         if: success()
