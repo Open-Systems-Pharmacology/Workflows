@@ -24,7 +24,7 @@ jobs:
     outputs:
       run_next_job: ${{ steps.set_output.outputs.run_next_job }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -53,7 +53,7 @@ jobs:
           list=''
           for file in ${ALL_CHANGED_FILES}; do
             list+="\t- $file,\n"
-          done 
+          done
           echo -e "::notice::Detected changes in files, Version will be bumped. List of changes:\n$list"
           echo "run_next_job=true" >> $GITHUB_OUTPUT
 
@@ -81,7 +81,7 @@ jobs:
           app-id: ${{ inputs.app-id }}
           private-key: ${{ secrets.private-key }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
@@ -117,7 +117,7 @@ jobs:
                                 paste0(sub("\\s+$","", remotes), "@*release"))
               desc::desc_set_remotes(remotes)
             }
-          }    
+          }
       - name: Get package version from DESCRIPTION file and set as environment variable
         shell: bash
         run: |
