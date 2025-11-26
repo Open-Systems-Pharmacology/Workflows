@@ -14,7 +14,7 @@ jobs:
   validate-with-referenced-schema:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Extract and download schema
@@ -30,7 +30,7 @@ jobs:
   validate-with-latest-released-schema:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Download schema from the latest released tag  # https://github.com/marketplace/actions/release-downloader
