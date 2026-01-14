@@ -8,7 +8,8 @@ on:
 
 name: Test C#
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   test-csharp:
