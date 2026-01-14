@@ -9,7 +9,7 @@ on:
 name: Test C#
 
 permissions:
-  contents: read
+  packages: read
 
 jobs:
   test-csharp:
