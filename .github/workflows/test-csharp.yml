@@ -1,3 +1,5 @@
+name: Test C#
+
 on:
   workflow_call:
     inputs:
@@ -5,8 +7,6 @@ on:
         description: 'A temporary build number to use for compiling the code'
         required: true
         type: string
-
-name: Test C#
 
 permissions:
   packages: read
