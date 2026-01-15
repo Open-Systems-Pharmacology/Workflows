@@ -1,0 +1,36 @@
+name: Test C#
+
+on:
+  workflow_call:
+    inputs:
+      temp-version:
+        description: 'A temporary build number to use for compiling the code'
+        required: true
+        type: string
+      solution-file:
+        description: 'If there is more than one solution file in the repository, specify the path to the solution file to build and test'
+        required: false
+        type: string
+
+permissions:
+  packages: read
+
+jobs:
+  test-csharp:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: 'true'
+
+      - name: Restore dependencies
+        run: |
+          nuget sources add -username Open-Systems-Pharmacology -password ${{ secrets.GITHUB_TOKEN }} -name OSP-GitHub-Packages -source "https://nuget.pkg.github.com/Open-Systems-Pharmacology/index.json"
+          dotnet restore
+
+      - name: Build
+        run: dotnet build ${{ inputs.solution-file }} /p:Version=${{ inputs.temp-version }}
+
+      - name: Test
+        run: dotnet test ${{ inputs.solution-file }} -v normal --no-build 
