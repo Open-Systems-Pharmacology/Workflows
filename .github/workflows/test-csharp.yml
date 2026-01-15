@@ -12,7 +12,7 @@ on:
         required: false
         type: string
       test-filter:
-        description: 'filter out some tests if necessary'
+        description: 'Filter out some tests if necessary'
         required: false
         type: string
 
