@@ -7,6 +7,10 @@ on:
         description: 'A temporary build number to use for compiling the code'
         required: true
         type: string
+      solution-file:
+        description: 'If there is more than one solution file in the repository, specify the path to the solution file to build and test'
+        required: false
+        type: string
 
 permissions:
   packages: read
@@ -26,7 +30,7 @@ jobs:
           dotnet restore
 
       - name: Build
-        run: dotnet build /p:Version=${{ inputs.temp-version }}
+        run: dotnet build ${{ inputs.solution-file }} /p:Version=${{ inputs.temp-version }}
 
       - name: Test
-        run: dotnet test -v normal --no-build 
+        run: dotnet test ${{ inputs.solution-file }} -v normal --no-build 
