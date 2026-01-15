@@ -19,8 +19,8 @@ on:
       build-arguments:
         description: 'Additional arguments to pass to dotnet build'
         required: false
-        default: ''
         type: string
+        default: ''
 
 permissions:
   packages: read
