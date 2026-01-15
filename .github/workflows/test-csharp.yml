@@ -11,10 +11,15 @@ on:
         description: 'If there is more than one solution file in the repository, specify the path to the solution file to build and test'
         required: false
         type: string
-      test-filter:
-        description: 'Filter out some tests if necessary'
+      test-arguments:
+        description: 'Additional arguments to pass to dotnet test'
         required: false
         type: string
+      build-arguments:
+        description: 'Additional arguments to pass to dotnet build'
+        required: false
+        type: string
+
 
 permissions:
   packages: read
@@ -34,13 +39,7 @@ jobs:
           dotnet restore
 
       - name: Build
-        run: dotnet build ${{ inputs.solution-file }} /p:Version=${{ inputs.temp-version }}
+        run: dotnet build ${{ inputs.solution-file }} /p:Version=${{ inputs.temp-version }} ${{ inputs.build-arguments }}
 
       - name: Test
-        run: |
-            if ("${{ inputs.test-filter }}" -eq "") {
-                dotnet test ${{ inputs.solution-file }} -v normal --no-build
-            } else {
-                dotnet test ${{ inputs.solution-file }} -v normal --no-build --filter "${{ inputs.test-filter }}"
-            }
-        shell: pwsh
+        run: dotnet test ${{ inputs.solution-file }} -v normal --no-build ${{ inputs.test-arguments }}
