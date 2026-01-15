@@ -38,9 +38,9 @@ jobs:
 
       - name: Test
         run: |
-            if ("${{ inputs.test-filter }}" -eq "") {
-            dotnet test ${{ inputs.solution-file }} -v normal --no-build
+            if (-not \"${{ inputs.test-filter }}\") {
+                dotnet test ${{ inputs.solution-file }} -v normal --no-build
             } else {
-            dotnet test ${{ inputs.solution-file }} -v normal --no-build --filter "${{ inputs.test-filter }}"
+                dotnet test ${{ inputs.solution-file }} -v normal --no-build --filter "${{ inputs.test-filter }}"
             }
         shell: pwsh
