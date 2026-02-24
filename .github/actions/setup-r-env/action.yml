@@ -24,6 +24,11 @@ runs:
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
       uses: r-lib/actions/setup-renv@v2
 
+    - name: Install gettext (for libintl.h)
+      if: runner.os == 'macOS'
+      run: brew install gettext
+      shell: bash
+
     - name: Setup R dependencies
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
       uses: r-lib/actions/setup-r-dependencies@v2
