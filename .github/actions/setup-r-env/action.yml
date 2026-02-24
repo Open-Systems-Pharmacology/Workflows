@@ -20,14 +20,14 @@ runs:
       run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Setup renv
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
-      uses: r-lib/actions/setup-renv@v2
-
     - name: Install gettext (for libintl.h)
       if: runner.os == 'macOS'
       run: brew install gettext
       shell: bash
+    
+    - name: Setup renv
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
+      uses: r-lib/actions/setup-renv@v2
 
     - name: Setup R dependencies
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
