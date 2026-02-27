@@ -98,24 +98,34 @@ jobs:
       - name: Change DESCRIPTION file
         shell: Rscript {0}
         run: |
+          # Bump version if in development
           if (usethis:::is_dev_version()) {
-            # bump dev version
             desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
-            # adjust Remotes only if it exists
-            if (desc::desc_has_fields("Remotes")) {
-              remotes <- desc::desc_get_remotes()
-              remotes <- gsub("@\\*release\\s*$", "", remotes)
-              desc::desc_set_remotes(remotes)
-            }
-          } else {
-            # pin Remotes to latest release only if field exists
-            if (desc::desc_has_fields("Remotes")) {
-              remotes <- desc::desc_get_remotes()
-              remotes <- ifelse(grepl("@\\*release\\s*$", remotes),
+          }
+
+          # Adjust Remotes field based on version type
+          if (desc::desc_has_fields("Remotes")) {
+            remotes <- desc::desc_get_remotes()
+            # Strip trailing whitespace first for clean comparison
+            remotes <- sub("\\s+$", "", remotes)
+
+            if (usethis:::is_dev_version()) {
+              # Remove @*release from any remote that has it
+              remotes <- gsub("@\\*release$", "", remotes)
+              action <- "removed @*release"
+            } else {
+              # Add @*release to any remote that doesn't already have it
+              remotes <- ifelse(grepl("@\\*release$", remotes),
                                 remotes,
-                                paste0(sub("\\s+$","", remotes), "@*release"))
-              desc::desc_set_remotes(remotes)
+                                paste0(remotes, "@*release"))
+              action <- "added @*release"
             }
+
+            desc::desc_set_remotes(remotes)
+            cat("\nModified DESCRIPTION Remotes field (", action, "):\n", sep = "")
+            cat(paste(remotes, collapse = "\n"), "\n")
+          } else {
+            cat("No Remotes field found in DESCRIPTION\n")
           }
       - uses: EndBug/add-and-commit@v9
         if: success()
