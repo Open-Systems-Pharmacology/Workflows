@@ -46,7 +46,7 @@ jobs:
           if (!requireNamespace("devtools", quietly = TRUE)) {
             install.packages("devtools")
           }
-          devtools::install(".", upgrade = "never")
+          devtools::install(".", upgrade = FALSE)
         shell: Rscript {0}
 
       - name: Build site
