@@ -1301,6 +1301,7 @@ potentialVariableParameterPathsFor
 Poulin
 Pourbaix
 Powerpoint
+PowerShell
 pre
 preclinical
 preconfigured
