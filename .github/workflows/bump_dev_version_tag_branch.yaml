@@ -29,7 +29,7 @@ jobs:
 
       - name: Detect changes
         id: changes
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             README.md

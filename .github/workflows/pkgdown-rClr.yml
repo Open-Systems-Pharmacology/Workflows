@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Setup R Environment
         uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-R-environment@main
@@ -46,7 +46,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Upload Artifacts 🔺 # The project is then uploaded as an artifact named 'site'.
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v7
         with:
           name: docs
           path: docs
@@ -61,10 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download Artifacts 🔻 # The built project is downloaded into the 'site' folder.
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v8
         with:
           name: docs
 
