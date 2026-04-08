@@ -2,6 +2,7 @@
 # This reusable workflow will, if triggered by a merge:
 #  - Bump version if the current version is development (x.y.z.9000+) & if functional changes are detected.
 #  - Specify Remotes to point to @*release versions for the current package released version
+#  - Tag the target branch with version number (only for non-dev versions)
 name: bump-dev-version
 
 on:
@@ -127,9 +128,26 @@ jobs:
           } else {
             cat("No Remotes field found in DESCRIPTION\n")
           }
+      - name: Get package version from DESCRIPTION file
+        shell: bash
+        run: |
+            PKG_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')
+            echo "PKG_VERSION=$PKG_VERSION" >> $GITHUB_ENV
+            if echo "$PKG_VERSION" | grep -qE '\.9[0-9]{3}$'; then
+              echo "IS_DEV_VERSION=true" >> $GITHUB_ENV
+            else
+              echo "IS_DEV_VERSION=false" >> $GITHUB_ENV
+            fi
+
       - uses: EndBug/add-and-commit@v9
         if: success()
         with:
           message: '🤖 Bump version. [skip actions]'
           default_author: github_actions
           add: 'DESCRIPTION'
+
+      - uses: thejeff77/action-push-tag@v1.0.0
+        if: success() && env.IS_DEV_VERSION == 'false'
+        with:
+          tag: v${{ env.PKG_VERSION }}
+          force: true
