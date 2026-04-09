@@ -18,6 +18,10 @@ inputs:
     description: 'Whether to install Quarto'
     required: false
     default: 'false'
+  dotnet-version:
+    description: '.NET version to install on macOS (e.g. "8.0.x", "9.0.x")'
+    required: false
+    default: '8.0.x'
   ignore-renv:
     description: 'Skip renv setup if set to true'
     required: false
@@ -34,10 +38,11 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Set DOTNET_ROOT for macOS
+    - name: Setup .NET
       if: runner.os == 'macOS'
-      run: echo "DOTNET_ROOT=$HOME/.dotnet" >> $GITHUB_ENV
-      shell: bash
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
 
     - name: Setup pandoc
       if: inputs.setup-pandoc == 'true'
