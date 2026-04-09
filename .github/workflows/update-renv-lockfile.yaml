@@ -22,9 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup .NET
-        if: runner.os == 'macOS'
-        uses: actions/setup-dotnet@v5
+      - name: Set up R
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
