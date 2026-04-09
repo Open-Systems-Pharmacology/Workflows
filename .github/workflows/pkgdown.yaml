@@ -28,7 +28,7 @@ jobs:
 
       - name: Setup R environment
         id: setup-r-env
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
+        uses: Felixmil/Workflows/.github/actions/setup-r-env@refactor/reusable-workflows-and-composite-actions
         with:
           setup-pandoc: 'true'
           ignore-renv: ${{ inputs.ignore-renv }}
