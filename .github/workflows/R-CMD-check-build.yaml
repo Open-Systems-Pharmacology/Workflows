@@ -38,7 +38,7 @@ jobs:
 
       - name: Setup R environment
         id: setup-r-env
-        uses: Felixmil/Workflows/.github/actions/setup-r-env@refactor/reusable-workflows-and-composite-actions
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'

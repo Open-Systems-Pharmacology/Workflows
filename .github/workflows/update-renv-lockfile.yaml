@@ -68,7 +68,7 @@ jobs:
           path: .
 
       - name: Setup R environment
-        uses: Felixmil/Workflows/.github/actions/setup-r-env@refactor/reusable-workflows-and-composite-actions
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
           setup-pandoc: 'true'
 
