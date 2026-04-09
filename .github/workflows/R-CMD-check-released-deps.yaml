@@ -1,0 +1,76 @@
+on:
+  workflow_call:
+
+name: R-CMD-check (released deps)
+
+permissions: read-all
+
+jobs:
+  R-CMD-check-released-deps:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }}) [Released Deps]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'release'}
+          - {os: macos-latest,   r: 'release'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Pin Remotes to released versions
+        shell: bash
+        run: |
+          if ! grep -q '^Remotes:' DESCRIPTION; then
+            echo "No Remotes field found in DESCRIPTION, skipping."
+            exit 0
+          fi
+
+          # Use awk to process the multiline Remotes field in-place:
+          # - Strip any @ref suffix from each remote entry
+          # - Append @*release to each remote entry
+          awk '
+            /^Remotes:/ { in_remotes=1; print; next }
+            in_remotes && /^[^ \t]/ { in_remotes=0 }
+            in_remotes {
+              # Remove existing @ref suffix, then append @*release
+              gsub(/@[^,]*/, "")
+              gsub(/([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)/, "&@*release")
+              print; next
+            }
+            { print }
+          ' DESCRIPTION > DESCRIPTION.tmp && mv DESCRIPTION.tmp DESCRIPTION
+
+          echo "Remotes pinned to released versions:"
+          awk '/^Remotes:/{in_r=1; print; next} in_r && /^[^ \t]/{exit} in_r{print}' DESCRIPTION
+
+      - name: Setup R environment
+        id: setup-r-env
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
+        with:
+          r-version: ${{ matrix.config.r }}
+          setup-pandoc: 'true'
+          ignore-renv: 'true'
+
+      - name: Check R package
+        uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          args: 'c("--no-manual", "--no-vignettes")'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          error-on: 'c("error")'
+
+      - name: Diagnostic message on failure
+        if: failure()
+        run: |
+          echo "::warning::This workflow tests the package against the latest *released* versions of OSP dependencies."
+          echo "::warning::If the main R-CMD-Check workflow passes but this one fails, it means the package works with development dependencies but not with the currently released ones."
+          echo "::warning::A new release of one or more OSP dependencies is likely needed before this package can be released."

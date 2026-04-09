@@ -2,6 +2,7 @@
 # This reusable workflow will, if triggered by a merge:
 #  - Bump version if the current version is development (x.y.z.9000+) & if functional changes are detected.
 #  - Specify Remotes to point to @*release versions for the current package released version
+#  - Tag the target branch with version number (only for non-dev versions)
 name: bump-dev-version
 
 on:
@@ -85,51 +86,74 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Setup R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
-
-      - name: Install packages
-        run: |
-          install.packages("usethis")
-        shell: Rscript {0}
-
       - name: Change DESCRIPTION file
-        shell: Rscript {0}
+        shell: bash
         run: |
-          # Bump version if in development
-          if (usethis:::is_dev_version()) {
-            desc::desc_set_version(version = usethis:::bump_version()[["dev"]])
-          }
+          # Read current version from DESCRIPTION
+          version=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')
+          echo "Current version: $version"
+
+          # Check if version is a dev version (has 4 components, e.g. 1.2.3.9000)
+          if [[ "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.([0-9]+)$ ]]; then
+            base="${BASH_REMATCH[1]}"
+            dev=$((BASH_REMATCH[2] + 1))
+            new_version="${base}.${dev}"
+            echo "Dev version detected. Bumping: $version -> $new_version"
+            sed -i "s/^Version:.*/Version: $new_version/" DESCRIPTION
+            is_dev=true
+          else
+            echo "Release version detected, no version bump needed."
+            is_dev=false
+          fi
 
           # Adjust Remotes field based on version type
-          if (desc::desc_has_fields("Remotes")) {
-            remotes <- desc::desc_get_remotes()
-            # Strip trailing whitespace first for clean comparison
-            remotes <- sub("\\s+$", "", remotes)
+          if grep -q '^Remotes:' DESCRIPTION; then
+            if [ "$is_dev" = true ]; then
+              # Remove @*release from remotes
+              awk '
+                /^Remotes:/ { in_remotes=1; print; next }
+                in_remotes && /^[^ \t]/ { in_remotes=0 }
+                in_remotes { gsub(/@\*release/, ""); print; next }
+                { print }
+              ' DESCRIPTION > DESCRIPTION.tmp && mv DESCRIPTION.tmp DESCRIPTION
+              echo "Remotes: removed @*release"
+            else
+              # Add @*release to remotes that don't already have it
+              awk '
+                /^Remotes:/ { in_remotes=1; print; next }
+                in_remotes && /^[^ \t]/ { in_remotes=0 }
+                in_remotes {
+                  # For each org/repo entry without @*release, append it
+                  if ($0 !~ /@\*release/) {
+                    gsub(/([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)(,?)$/, "\\1@*release\\2")
+                  }
+                  print; next
+                }
+                { print }
+              ' DESCRIPTION > DESCRIPTION.tmp && mv DESCRIPTION.tmp DESCRIPTION
+              echo "Remotes: added @*release"
+            fi
 
-            if (usethis:::is_dev_version()) {
-              # Remove @*release from any remote that has it
-              remotes <- gsub("@\\*release$", "", remotes)
-              action <- "removed @*release"
-            } else {
-              # Add @*release to any remote that doesn't already have it
-              remotes <- ifelse(grepl("@\\*release$", remotes),
-                                remotes,
-                                paste0(remotes, "@*release"))
-              action <- "added @*release"
-            }
+            echo "Updated Remotes:"
+            awk '/^Remotes:/{in_r=1; print; next} in_r && /^[^ \t]/{exit} in_r{print}' DESCRIPTION
+          else
+            echo "No Remotes field found in DESCRIPTION"
+          fi
 
-            desc::desc_set_remotes(remotes)
-            cat("\nModified DESCRIPTION Remotes field (", action, "):\n", sep = "")
-            cat(paste(remotes, collapse = "\n"), "\n")
-          } else {
-            cat("No Remotes field found in DESCRIPTION\n")
-          }
+          # Export version info for subsequent steps
+          final_version=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')
+          echo "PKG_VERSION=$final_version" >> $GITHUB_ENV
+          echo "IS_DEV_VERSION=$is_dev" >> $GITHUB_ENV
+
       - uses: EndBug/add-and-commit@v9
         if: success()
         with:
           message: '🤖 Bump version. [skip actions]'
           default_author: github_actions
           add: 'DESCRIPTION'
+
+      - uses: thejeff77/action-push-tag@v1.0.0
+        if: success() && env.IS_DEV_VERSION == 'false'
+        with:
+          tag: v${{ env.PKG_VERSION }}
+          force: true

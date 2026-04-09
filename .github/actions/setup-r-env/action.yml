@@ -1,7 +1,23 @@
-name: 'Setup R environment (renv or dependencies)'
-description: 'Detects renv.lock and sets up either renv or R dependencies accordingly'
+name: 'Setup R environment'
+description: 'Sets up a complete R environment: R, pandoc, dotnet workaround, and renv or dependencies'
 
 inputs:
+  r-version:
+    description: 'R version to install (e.g. "release", "devel", "4.3.1")'
+    required: false
+    default: 'release'
+  use-public-rspm:
+    description: 'Use public RStudio Package Manager'
+    required: false
+    default: 'true'
+  setup-pandoc:
+    description: 'Whether to install pandoc'
+    required: false
+    default: 'false'
+  setup-quarto:
+    description: 'Whether to install Quarto'
+    required: false
+    default: 'false'
   ignore-renv:
     description: 'Skip renv setup if set to true'
     required: false
@@ -11,24 +27,38 @@ outputs:
   renv_detected:
     description: 'Whether renv.lock was detected'
     value: ${{ steps.check-renv.outputs.renv_detected }}
+  installed-r-version:
+    description: 'The installed R version'
+    value: ${{ steps.setup-r.outputs.installed-r-version }}
 
 runs:
   using: composite
   steps:
+    - name: Set DOTNET_ROOT for macOS
+      if: runner.os == 'macOS'
+      run: echo "DOTNET_ROOT=$HOME/.dotnet" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Setup pandoc
+      if: inputs.setup-pandoc == 'true'
+      uses: r-lib/actions/setup-pandoc@v2
+
+    - name: Setup Quarto
+      if: inputs.setup-quarto == 'true'
+      uses: quarto-dev/quarto-actions/setup@v2
+
+    - name: Setup R
+      id: setup-r
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: ${{ inputs.r-version }}
+        use-public-rspm: ${{ inputs.use-public-rspm }}
+
     - name: Check for renv.lock
       id: check-renv
       run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Install gettext (for libintl.h)
-      if: runner.os == 'macOS'
-      run: |
-        brew install gettext
-        mkdir -p ~/.R
-        echo "CPPFLAGS += -I$(brew --prefix gettext)/include" >> ~/.R/Makevars
-        echo "LDFLAGS += -L$(brew --prefix gettext)/lib" >> ~/.R/Makevars
-      shell: bash
-    
     - name: Setup renv
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
       uses: r-lib/actions/setup-renv@v2
