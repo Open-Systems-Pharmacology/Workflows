@@ -10,8 +10,6 @@ on:
       private-key:
         required: true
 
-permissions: read-all
-
 jobs:
   update-renv-lock:
     runs-on: ubuntu-latest
