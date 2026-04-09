@@ -10,8 +10,7 @@ on:
       private-key:
         required: true
 
-permissions:
-  contents: write
+permissions: read-all
 
 jobs:
   update-renv-lock:
@@ -79,6 +78,8 @@ jobs:
     needs: test-on-platforms
     runs-on: ubuntu-latest
     if: needs.test-on-platforms.result == 'success'
+    permissions:
+      contents: write
 
     steps:
       - name: Generate token from GitHub App
