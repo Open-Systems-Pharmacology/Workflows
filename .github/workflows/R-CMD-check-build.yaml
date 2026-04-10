@@ -8,6 +8,16 @@ on:
         required: false
         type: boolean
         default: false
+      os-matrix:
+        description: 'JSON array of {os, r} objects for the build matrix. Defaults to all three platforms with R release.'
+        required: false
+        type: string
+        default: '[{"os": "windows-latest", "r": "release"}, {"os": "ubuntu-latest", "r": "release"}, {"os": "macos-latest", "r": "release"}]'
+      build-binary:
+        description: 'Whether to build and upload the binary package. Set to false on PRs to save ~4 min per OS.'
+        required: false
+        type: boolean
+        default: true
 
 name: R-CMD-check
 
@@ -22,10 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: macos-latest,   r: 'release'}
+        config: ${{ fromJSON(inputs.os-matrix) }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -42,36 +49,37 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'
+          setup-tinytex: 'true'
           ignore-renv: ${{ inputs.ignore-renv }}
 
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          args: 'c("--no-manual", "--no-vignettes")'
-          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--no-vignettes")'
           error-on: 'c("error")'
 
       - name: Install extra packages
+        if: inputs.build-binary
         run: |
-          packages <- c("rcmdcheck", "devtools", "pkgload", "desc")
+          packages <- c("devtools")
           missing <- packages[!packages %in% rownames(installed.packages())]
           if (length(missing) > 0) {
             install.packages(missing)
           }
         shell: Rscript {0}
 
-      - name: Build package
-        if: success()
+      - name: Build binary from check tarball
+        if: inputs.build-binary
         run: |
+          tarball <- list.files("check", pattern = "\\.tar\\.gz$", full.names = TRUE)
           output_dir <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "built_package")
           dir.create(output_dir)
-          # first run build() to get a bundle package (that includes rendered vignettes), then create binary.
-          devtools::build(devtools::build(), binary = TRUE, path = output_dir, args=c("--preclean", "--install-tests"))
+          devtools::build(tarball, binary = TRUE, path = output_dir, args = c("--preclean", "--install-tests"))
         shell: Rscript {0}
 
       - name: Get package name, version and R versions and store in environment
-        if: success()
+        if: inputs.build-binary
         run: |
           echo "PKG_NAME=$(grep '^Package:' DESCRIPTION | sed 's/^Package:[[:space:]]*//')" >> $GITHUB_ENV
           echo "PKG_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')" >> $GITHUB_ENV
@@ -79,7 +87,7 @@ jobs:
         shell: bash
 
       - name: Upload built package
-        if: success()
+        if: inputs.build-binary
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.PKG_NAME }}-v${{ env.PKG_VERSION }}-${{runner.os}}-r_${{ env.R_VERSION }}
