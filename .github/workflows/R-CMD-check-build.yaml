@@ -8,6 +8,11 @@ on:
         required: false
         type: boolean
         default: false
+      os-matrix:
+        description: 'JSON array of {os, r} objects for the build matrix. Defaults to all three platforms with R release.'
+        required: false
+        type: string
+        default: '[{"os": "windows-latest", "r": "release"}, {"os": "ubuntu-latest", "r": "release"}, {"os": "macos-latest", "r": "release"}]'
 
 name: R-CMD-check
 
@@ -22,10 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: macos-latest,   r: 'release'}
+        config: ${{ fromJSON(inputs.os-matrix) }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
