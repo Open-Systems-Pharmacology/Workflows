@@ -8,11 +8,41 @@ on:
         required: false
         type: boolean
         default: false
+      doc-path-filters:
+        description: 'YAML string for dorny/paths-filter. On PRs, pkgdown is skipped when none of these paths changed. Ignored on push events.'
+        required: false
+        type: string
+        default: |
+          docs:
+            - 'man/**'
+            - 'vignettes/**'
+            - '_pkgdown.yml'
+            - '_pkgdown.yaml'
+            - 'pkgdown/**'
+            - 'README.md'
+            - 'DESCRIPTION'
+            - 'NEWS.md'
+            - 'R/**'
 
 name: pkgdown
 
 jobs:
+  check-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: ${{ inputs.doc-path-filters }}
+
   pkgdown:
+    needs: [check-changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.check-changes.outputs.docs == 'true') }}
     runs-on: ubuntu-latest
     # Only restrict concurrency for non-PR jobs
     concurrency:
