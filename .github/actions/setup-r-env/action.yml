@@ -77,6 +77,8 @@ runs:
     - name: Setup renv
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
       uses: r-lib/actions/setup-renv@v2
+      env:
+        RENV_CONFIG_PPM_ENABLED: 'true'
 
     - name: Setup R dependencies
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
