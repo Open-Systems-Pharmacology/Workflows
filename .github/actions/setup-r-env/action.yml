@@ -74,11 +74,32 @@ runs:
       run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Setup renv
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
+    - name: Setup renv (Linux/macOS)
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'
       uses: r-lib/actions/setup-renv@v2
-      env:
-        RENV_CONFIG_PPM_ENABLED: 'true'
+
+    - name: Set renv cache path (Windows)
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+      shell: bash
+      run: echo "RENV_PATHS_ROOT=${{ runner.temp }}/renv" >> $GITHUB_ENV
+
+    - name: Cache renv library (Windows)
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ runner.temp }}/renv
+          renv/library
+        key: renv-${{ runner.os }}-${{ steps.setup-r.outputs.installed-r-version }}-${{ hashFiles('renv.lock') }}
+        restore-keys: |
+          renv-${{ runner.os }}-${{ steps.setup-r.outputs.installed-r-version }}-
+
+    - name: Restore renv packages (Windows)
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+      shell: Rscript {0}
+      run: |
+        if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+        renv::restore()
 
     - name: Setup R dependencies
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
