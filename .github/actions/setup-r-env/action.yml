@@ -59,8 +59,6 @@ runs:
     - name: Setup TinyTeX
       if: inputs.setup-tinytex == 'true'
       uses: r-lib/actions/setup-tinytex@v2
-      env:
-        TINYTEX_INSTALLER: TinyTeX
 
     - name: Setup R
       id: setup-r
