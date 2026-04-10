@@ -14,6 +14,10 @@ inputs:
     description: 'Whether to install pandoc'
     required: false
     default: 'false'
+  setup-tinytex:
+    description: 'Whether to install TinyTeX (provides pdflatex for PDF manual builds)'
+    required: false
+    default: 'false'
   setup-quarto:
     description: 'Whether to install Quarto'
     required: false
@@ -51,6 +55,12 @@ runs:
     - name: Setup Quarto
       if: inputs.setup-quarto == 'true'
       uses: quarto-dev/quarto-actions/setup@v2
+
+    - name: Setup TinyTeX
+      if: inputs.setup-tinytex == 'true'
+      uses: r-lib/actions/setup-tinytex@v2
+      env:
+        TINYTEX_INSTALLER: TinyTeX
 
     - name: Setup R
       id: setup-r
