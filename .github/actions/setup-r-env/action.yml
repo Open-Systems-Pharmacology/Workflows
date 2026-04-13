@@ -76,11 +76,9 @@ runs:
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'
       uses: r-lib/actions/setup-renv@v2
 
-    # Windows: cache R packages in a dedicated library to avoid renv's slow
-    # file copy (~20 min). Windows can't hardlink, so renv copies thousands
-    # of small files from global cache to project library on every restore.
-    # Instead, we point R_LIBS_USER to a cacheable absolute path and install
-    # there once. On cache hit, R finds packages directly — no renv needed.
+    # Windows: point R_LIBS_USER to a cacheable absolute path and install
+    # packages there via renv::restore(library=...) on cache miss.
+    # On cache hit, R finds packages directly — no renv restore needed.
     - name: Configure R library for caching (Windows)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
       shell: bash
