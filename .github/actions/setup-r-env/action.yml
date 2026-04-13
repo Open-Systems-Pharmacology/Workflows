@@ -76,24 +76,35 @@ runs:
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'
       uses: r-lib/actions/setup-renv@v2
 
-    # Windows: cache the renv project library directly to skip the slow
-    # renv::restore() copy step (Windows can't hardlink, so renv copies
-    # thousands of small files — ~20 min). On cache hit, renv/activate.R
-    # (sourced from .Rprofile) sets up library paths automatically.
-    - name: Cache renv library (Windows)
+    # Windows: cache R packages in a dedicated library to avoid renv's slow
+    # file copy (~20 min). Windows can't hardlink, so renv copies thousands
+    # of small files from global cache to project library on every restore.
+    # Instead, we point R_LIBS_USER to a cacheable absolute path and install
+    # there once. On cache hit, R finds packages directly — no renv needed.
+    - name: Configure R library for caching (Windows)
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+      shell: bash
+      run: |
+        R_LIB_PATH="${{ runner.temp }}/R-lib"
+        mkdir -p "${R_LIB_PATH}"
+        echo "R_LIBS_USER=${R_LIB_PATH}" >> $GITHUB_ENV
+        echo "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE" >> $GITHUB_ENV
+
+    - name: Cache R library (Windows)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
       id: cache-renv-win
       uses: actions/cache@v4
       with:
-        path: renv/library
-        key: renv-${{ runner.os }}-${{ steps.setup-r.outputs.installed-r-version }}-${{ hashFiles('renv.lock') }}
+        path: ${{ runner.temp }}/R-lib
+        key: r-lib-${{ runner.os }}-${{ steps.setup-r.outputs.installed-r-version }}-${{ hashFiles('renv.lock') }}
 
-    - name: Restore renv packages (Windows, cache miss)
+    - name: Install packages from renv.lock (Windows, cache miss)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows' && steps.cache-renv-win.outputs.cache-hit != 'true'
       shell: Rscript {0}
       run: |
-        if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
-        renv::restore()
+        lib <- Sys.getenv("R_LIBS_USER")
+        if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", lib = lib)
+        renv::restore(library = lib)
 
     - name: Setup R dependencies
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
