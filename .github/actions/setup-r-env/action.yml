@@ -76,24 +76,20 @@ runs:
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'
       uses: r-lib/actions/setup-renv@v2
 
-    - name: Set renv cache path (Windows)
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
-      shell: bash
-      run: echo "RENV_PATHS_ROOT=${{ runner.temp }}/renv" >> $GITHUB_ENV
-
+    # Windows: cache the renv project library directly to skip the slow
+    # renv::restore() copy step (Windows can't hardlink, so renv copies
+    # thousands of small files — ~20 min). On cache hit, renv/activate.R
+    # (sourced from .Rprofile) sets up library paths automatically.
     - name: Cache renv library (Windows)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+      id: cache-renv-win
       uses: actions/cache@v4
       with:
-        path: |
-          ${{ runner.temp }}/renv
-          renv/library
+        path: renv/library
         key: renv-${{ runner.os }}-${{ steps.setup-r.outputs.installed-r-version }}-${{ hashFiles('renv.lock') }}
-        restore-keys: |
-          renv-${{ runner.os }}-${{ steps.setup-r.outputs.installed-r-version }}-
 
-    - name: Restore renv packages (Windows)
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+    - name: Restore renv packages (Windows, cache miss)
+      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows' && steps.cache-renv-win.outputs.cache-hit != 'true'
       shell: Rscript {0}
       run: |
         if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
