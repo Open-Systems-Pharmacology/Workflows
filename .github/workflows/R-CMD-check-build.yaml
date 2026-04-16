@@ -49,14 +49,15 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'
-          setup-tinytex: 'true'
+          setup-tinytex: 'false'
           ignore-renv: ${{ inputs.ignore-renv }}
 
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          args: 'c("--no-vignettes")'
+          args: 'c("--no-manual")'
+          build_args: 'c("--no-manual")'
           error-on: 'c("error")'
 
       - name: Install extra packages
