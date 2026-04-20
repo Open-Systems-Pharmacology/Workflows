@@ -32,16 +32,7 @@ jobs:
         uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
           ignore-renv: ${{ inputs.ignore-renv }}
-
-      - name: Install extra packages
-        run: |
-          if (!requireNamespace("covr", quietly = TRUE)) {
-            install.packages("covr")
-          }
-          if (!requireNamespace("xml2", quietly = TRUE)) {
-            install.packages("xml2")
-          }
-        shell: Rscript {0}
+          extra-packages: covr
 
       - name: Test coverage
         run: |
@@ -53,7 +44,7 @@ jobs:
           covr::to_cobertura(cov)
         shell: Rscript {0}
 
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: ${{ github.event_name != 'pull_request' && true || false }}
           file: ./cobertura.xml

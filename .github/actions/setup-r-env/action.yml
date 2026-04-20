@@ -30,6 +30,10 @@ inputs:
     description: 'Skip renv setup if set to true'
     required: false
     default: 'false'
+  extra-packages:
+    description: 'CI tool packages (e.g., covr, pkgdown, rcmdcheck) to install before renv restore. Gets latest version; if package is in renv.lock, restore will overwrite with locked version.'
+    required: false
+    default: ''
 
 outputs:
   renv_detected:
@@ -71,6 +75,19 @@ runs:
       id: check-renv
       run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
+
+    - name: Install extra packages
+      if: inputs.extra-packages != ''
+      shell: Rscript {0}
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+      run: |
+        pkgs <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "\\s+")[[1]]
+        pkgs <- pkgs[nzchar(pkgs)]
+        if (length(pkgs) > 0L) {
+          install.packages("pak")
+          pak::pkg_install(pkgs)
+        }
 
     - name: Setup renv (Linux/macOS)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'

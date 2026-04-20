@@ -62,16 +62,11 @@ jobs:
         with:
           setup-pandoc: 'true'
           ignore-renv: ${{ inputs.ignore-renv }}
+          extra-packages: pkgdown
 
-      - name: Install extra packages
-        run: |
-          if (!requireNamespace("pkgdown", quietly = TRUE)) {
-            install.packages("pkgdown")
-          }
-          if (!requireNamespace("devtools", quietly = TRUE)) {
-            install.packages("devtools")
-          }
-          devtools::install(".", upgrade = FALSE)
+      - name: Install Local package
+        id: install-local
+        run: pak::local_install(dependencies = FALSE)
         shell: Rscript {0}
 
       - name: Build site

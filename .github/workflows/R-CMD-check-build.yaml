@@ -18,7 +18,6 @@ on:
         required: false
         type: boolean
         default: true
-
 name: R-CMD-check
 
 permissions: read-all
@@ -51,6 +50,9 @@ jobs:
           setup-pandoc: 'true'
           setup-tinytex: 'false'
           ignore-renv: ${{ inputs.ignore-renv }}
+          extra-packages: |
+            rcmdcheck
+            ${{ inputs.build-binary && 'pkgbuild' || '' }}
 
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
@@ -60,24 +62,20 @@ jobs:
           build_args: 'c("--no-manual")'
           error-on: 'c("error")'
 
-      - name: Install extra packages
+      - name: Build binary package
         if: inputs.build-binary
-        run: |
-          packages <- c("devtools")
-          missing <- packages[!packages %in% rownames(installed.packages())]
-          if (length(missing) > 0) {
-            install.packages(missing)
-          }
         shell: Rscript {0}
-
-      - name: Build binary from check tarball
-        if: inputs.build-binary
         run: |
-          tarball <- list.files("check", pattern = "\\.tar\\.gz$", full.names = TRUE)
           output_dir <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "built_package")
-          dir.create(output_dir)
-          devtools::build(tarball, binary = TRUE, path = output_dir, args = c("--preclean", "--install-tests"))
-        shell: Rscript {0}
+          dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+          tarball <- list.files("check", pattern = "\\.tar\\.gz$", full.names = TRUE)[1]
+          built <- pkgbuild::build(
+            path = tarball,
+            dest_path = output_dir,
+            binary = TRUE,
+            args = c("--preclean", "--install-tests")
+          )
+          cat("Built binary:", built, "\n")
 
       - name: Get package name, version and R versions and store in environment
         if: inputs.build-binary
