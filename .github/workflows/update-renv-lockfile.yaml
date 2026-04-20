@@ -29,6 +29,9 @@ jobs:
       - name: Install renv
         run: Rscript -e "install.packages('renv')"
 
+      - name: Restore renv library
+        run: Rscript -e "renv::restore()"
+
       - name: Update packages at latest versions and snapshot
         run: Rscript -e "renv::update(lock = TRUE)"
 
