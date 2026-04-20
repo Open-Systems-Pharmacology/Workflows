@@ -32,7 +32,7 @@ jobs:
         uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
           ignore-renv: ${{ inputs.ignore-renv }}
-          required-packages: covr
+          extra-packages: covr
 
       - name: Test coverage
         run: |

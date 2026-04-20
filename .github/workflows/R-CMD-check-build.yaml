@@ -50,7 +50,7 @@ jobs:
           setup-pandoc: 'true'
           setup-tinytex: 'true'
           ignore-renv: ${{ inputs.ignore-renv }}
-          required-packages: |
+          extra-packages: |
             rcmdcheck
             ${{ inputs.build-binary && 'pkgbuild' || '' }}
 

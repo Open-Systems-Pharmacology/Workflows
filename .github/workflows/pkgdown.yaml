@@ -62,7 +62,7 @@ jobs:
         with:
           setup-pandoc: 'true'
           ignore-renv: ${{ inputs.ignore-renv }}
-          required-packages: pkgdown
+          extra-packages: pkgdown
 
       - name: Install Local package
         id: install-local

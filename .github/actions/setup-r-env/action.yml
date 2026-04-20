@@ -30,8 +30,8 @@ inputs:
     description: 'Skip renv setup if set to true'
     required: false
     default: 'false'
-  required-packages:
-    description: 'R packages that must be available after setup, one per line. For non-renv projects, installs via setup-r-dependencies. For renv projects, only verifies (errors with instructions if missing).'
+  extra-packages:
+    description: 'CI tool packages (e.g., covr, pkgdown, rcmdcheck) to install before renv restore. Gets latest version; if package is in renv.lock, restore will overwrite with locked version.'
     required: false
     default: ''
 
@@ -76,6 +76,19 @@ runs:
       run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
 
+    - name: Install extra packages
+      if: inputs.extra-packages != ''
+      shell: Rscript {0}
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+      run: |
+        pkgs <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "\\s+")[[1]]
+        pkgs <- pkgs[nzchar(pkgs)]
+        if (length(pkgs) > 0L) {
+          install.packages("pak")
+          pak::pkg_install(pkgs)
+        }
+
     - name: Setup renv (Linux/macOS)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'
       uses: r-lib/actions/setup-renv@v2
@@ -112,44 +125,4 @@ runs:
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
-        extra-packages: ${{ inputs.required-packages }}
-
-    - name: Verify required packages
-      if: inputs.required-packages != ''
-      shell: Rscript {0}
-      env:
-        REQUIRED_PACKAGES: ${{ inputs.required-packages }}
-        RENV_DETECTED: ${{ steps.check-renv.outputs.renv_detected }}
-        IGNORE_RENV: ${{ inputs.ignore-renv }}
-      run: |
-        required <- strsplit(Sys.getenv("REQUIRED_PACKAGES"), "\\s+")[[1]]
-        required <- required[nzchar(required)]
-        if (length(required) == 0L) quit("no")
-
-        missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
-        if (length(missing) == 0L) quit("no")
-
-        renv_active <- identical(Sys.getenv("RENV_DETECTED"), "true") &&
-          !identical(tolower(Sys.getenv("IGNORE_RENV")), "true")
-
-        pkgs_str <- paste(sprintf("'%s'", missing), collapse = ", ")
-        pkgs_install <- paste(sprintf('"%s"', missing), collapse = ", ")
-
-        if (renv_active) {
-          msg <- paste(
-            sprintf("Required packages not installed: %s", pkgs_str),
-            "This project uses renv. To fix, run locally:",
-            sprintf("  1. Add %s to 'Suggests' in DESCRIPTION", pkgs_str),
-            sprintf("  2. renv::install(c(%s))", pkgs_install),
-            "  3. renv::snapshot()",
-            "  4. Commit the updated renv.lock",
-            sep = "\n"
-          )
-        } else {
-          msg <- paste(
-            sprintf("Required packages not installed: %s", pkgs_str),
-            sprintf("Add %s to 'Suggests' in DESCRIPTION", pkgs_str),
-            sep = "\n"
-          )
-        }
-        stop(msg, call. = FALSE)
+        extra-packages: ${{ inputs.extra-packages }}
