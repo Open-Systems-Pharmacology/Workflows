@@ -17,7 +17,7 @@ on:
 
 jobs:
   detect-changes:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push'
     concurrency: #prevent concurrent runs
       group: ${{ github.workflow }}
     runs-on: ubuntu-latest
