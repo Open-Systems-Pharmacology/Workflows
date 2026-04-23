@@ -120,9 +120,9 @@ runs:
             workingDirectory,
             ifelse(isEvaluation, "${{ inputs.folder-name }}_evaluation_report.md", "report.md")
           )
-          # Convert to html using css, TODO find a better permanent url to store css
+          # Convert to html using css
           download.file(
-            url = "https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/refs/heads/main/Data/osp.css",
+            url = "https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/main/Data/osp.css",
             destfile = "osp.css"
           )
           knitr::pandoc(
@@ -143,10 +143,10 @@ runs:
             "--displayHeaderFooter true",
             "--format A4",
             "--printBackground true",
-            "--marginTop 10mm",
-            "--marginBottom 20mm",
-            "--marginLeft 10mm",
-            "--marginRight 10mm",
+            "--marginTop 25mm",
+            "--marginBottom 25mm",
+            "--marginLeft 25mm",
+            "--marginRight 25mm",
             '--headerTemplate "<span></span>"',
             '--footerTemplate "<p style=\\"text-align: center; margin: auto; font-size: 10px;\\"><span class=\\"pageNumber\\"></span>/<span class=\\"totalPages\\"></span></p>"',
             paste0('"', gsub(pattern = ".md", ".html", reportPath), '"')
