@@ -14,6 +14,8 @@ jobs:
   update-renv-lock:
     runs-on: ubuntu-latest
     name: Update renv.lock
+    env:
+      GITHUB_PAT: ${{ github.token }}
     outputs:
       lockfile-changed: ${{ steps.check-changes.outputs.changed }}
 
@@ -26,24 +28,22 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install renv
-        run: Rscript -e "install.packages('renv')"
-
-      - name: Restore renv library
-        run: Rscript -e "renv::restore()"
-
-      - name: Update packages at latest versions and snapshot
-        run: Rscript -e "renv::update(lock = TRUE)"
+      - name: Update project dependencies and snapshot lockfile
+        shell: Rscript {0}
+        run: |
+          install.packages("renv")
+          renv::install(prompt = FALSE, lock = TRUE)
 
       - name: Check if renv.lock changed
         id: check-changes
         run: |
-          if git diff --quiet renv.lock; then
+          if [ -z "$(git status --porcelain -- renv.lock)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "renv.lock is unchanged, skipping downstream jobs."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "renv.lock has been updated."
+            git diff renv.lock
           fi
 
       - name: Upload updated renv.lock
@@ -66,6 +66,8 @@ jobs:
           - macos-latest
     runs-on: ${{ matrix.os }}
     name: Test on ${{ matrix.os }}
+    env:
+      GITHUB_PAT: ${{ github.token }}
 
     steps:
       - name: Checkout repository
@@ -81,6 +83,8 @@ jobs:
         uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
           setup-pandoc: 'true'
+          extra-packages: |
+            rcmdcheck
 
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
