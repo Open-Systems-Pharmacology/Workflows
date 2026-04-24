@@ -37,6 +37,7 @@ jobs:
         shell: Rscript {0}
         run: |
           renv::install(prompt = FALSE, lock = TRUE)
+          renv::update(prompt = FALSE, lock = TRUE)
 
       - name: Show renv.lock diff
         run: |
