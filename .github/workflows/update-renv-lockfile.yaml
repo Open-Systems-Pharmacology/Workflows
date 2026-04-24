@@ -36,7 +36,15 @@ jobs:
       - name: Update project dependencies and snapshot lockfile
         shell: Rscript {0}
         run: |
-          renv::install(prompt = F, lock = T)
+          renv::install(prompt = FALSE, lock = TRUE)
+
+      - name: Show renv.lock diff
+        run: |
+          if [ -z "$(git status --porcelain -- renv.lock)" ]; then
+            echo "renv.lock is unchanged."
+          else
+            git --no-pager diff -- renv.lock
+          fi
 
       - name: Check if renv.lock changed
         id: check-changes
