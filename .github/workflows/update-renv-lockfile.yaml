@@ -36,8 +36,7 @@ jobs:
       - name: Update project dependencies and snapshot lockfile
         shell: Rscript {0}
         run: |
-          renv::install(prompt = FALSE)
-          renv::snapshot(prompt = FALSE)
+          renv::install(prompt = F, lock = T)
 
       - name: Check if renv.lock changed
         id: check-changes
