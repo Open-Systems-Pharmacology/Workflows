@@ -36,26 +36,62 @@ jobs:
       - name: Update project dependencies and snapshot lockfile
         shell: Rscript {0}
         run: |
-          renv::install(prompt = FALSE, lock = TRUE)
-          renv::update(prompt = FALSE, lock = TRUE, all = TRUE)
+          repos <- c(PPM = "https://packagemanager.posit.co/cran/latest")
+          options(repos = repos)
 
-      - name: Show renv.lock diff
-        run: |
-          if [ -z "$(git status --porcelain -- renv.lock)" ]; then
-            echo "renv.lock is unchanged."
-          else
-            git --no-pager diff -- renv.lock
-          fi
+          if (file.exists("renv.lock")) {
+            unlink("renv.lock")
+          }
+
+          snapshot_type <- renv::settings$snapshot.type()
+          dev <- renv::settings$snapshot.dev()
+          fields <- renv::settings$package.dependency.fields()
+          install_fields <- if (isTRUE(dev)) unique(c(fields, "Suggests")) else fields
+
+          renv::install(
+            dependencies = install_fields,
+            repos = repos,
+            prompt = FALSE,
+            lock = FALSE
+          )
+
+          candidate <- renv::snapshot(
+            type = snapshot_type,
+            dev = dev,
+            repos = repos,
+            lockfile = NULL,
+            prompt = FALSE,
+            force = TRUE
+          )
+
+          packages <- names(candidate$Packages)
+          if (length(packages) > 0L) {
+            renv::update(
+              packages = packages,
+              all = TRUE,
+              prompt = FALSE,
+              lock = FALSE
+            )
+          }
+
+          renv::snapshot(
+            type = snapshot_type,
+            dev = dev,
+            repos = repos,
+            prompt = FALSE,
+            force = TRUE
+          )
 
       - name: Check if renv.lock changed
         id: check-changes
         run: |
           if [ -z "$(git status --porcelain -- renv.lock)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "renv.lock is unchanged, skipping downstream jobs."
+            echo "renv.lock is unchanged."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "renv.lock has been updated."
+            echo "renv.lock has been updated:"
+            git --no-pager diff -- renv.lock
           fi
 
       - name: Upload updated renv.lock
