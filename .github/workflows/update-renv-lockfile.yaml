@@ -6,6 +6,11 @@ on:
       app-id:
         type: string
         required: true
+      os-matrix:
+        description: 'JSON array of OS names for the test matrix. Defaults to all three platforms.'
+        required: false
+        type: string
+        default: '["windows-latest", "ubuntu-latest", "macos-latest"]'
     secrets:
       private-key:
         required: true
@@ -60,10 +65,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest
-          - macos-latest
+        os: ${{ fromJSON(inputs.os-matrix) }}
     runs-on: ${{ matrix.os }}
     name: Test on ${{ matrix.os }}
     env:
