@@ -6,6 +6,11 @@ on:
       app-id:
         type: string
         required: true
+      os-matrix:
+        description: 'JSON array of {os, r} objects for the check matrix. Defaults to all three platforms with R release.'
+        required: false
+        type: string
+        default: '[{"os": "windows-latest", "r": "release"}, {"os": "ubuntu-latest", "r": "release"}, {"os": "macos-latest", "r": "release"}]'
     secrets:
       private-key:
         required: true
@@ -108,12 +113,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest
-          - macos-latest
-    runs-on: ${{ matrix.os }}
-    name: Test on ${{ matrix.os }}
+        config: ${{ fromJSON(inputs.os-matrix) }}
+    runs-on: ${{ matrix.config.os }}
+    name: Test on ${{ matrix.config.os }} (${{ matrix.config.r }})
     env:
       GITHUB_PAT: ${{ github.token }}
 
@@ -130,6 +132,7 @@ jobs:
       - name: Setup R environment
         uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
+          r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'
           extra-packages: |
             rcmdcheck
