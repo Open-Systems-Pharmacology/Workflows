@@ -31,7 +31,7 @@ inputs:
     required: false
     default: 'false'
   extra-packages:
-    description: 'CI tool packages (e.g., covr, pkgdown, rcmdcheck) to install before renv restore. Gets latest version; if package is in renv.lock, restore will overwrite with locked version.'
+    description: 'CI tool packages (e.g., covr, pkgdown, rcmdcheck). For renv projects, installed before renv restore (latest version; restore overwrites if package is in renv.lock). For non-renv projects, forwarded to setup-r-dependencies.'
     required: false
     default: ''
 
@@ -76,8 +76,8 @@ runs:
       run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Install extra packages
-      if: inputs.extra-packages != ''
+    - name: Install extra packages (renv projects)
+      if: inputs.extra-packages != '' && steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
       shell: Rscript {0}
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
@@ -85,7 +85,18 @@ runs:
         pkgs <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "\\s+")[[1]]
         pkgs <- pkgs[nzchar(pkgs)]
         if (length(pkgs) > 0L) {
-          install.packages("pak")
+          # Install pak from r-lib's prebuilt binary repo to avoid source
+          # compilation when no CRAN/RSPM binary is yet available (e.g. days
+          # after a new R release).
+          install.packages(
+            "pak",
+            repos = sprintf(
+              "https://r-lib.github.io/p/pak/stable/%s/%s/%s",
+              .Platform$pkgType,
+              R.Version()$os,
+              R.Version()$arch
+            )
+          )
           pak::pkg_install(pkgs)
         }
 
@@ -124,3 +135,5 @@ runs:
     - name: Setup R dependencies
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
       uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        extra-packages: ${{ inputs.extra-packages }}
