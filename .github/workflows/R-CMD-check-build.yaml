@@ -18,6 +18,26 @@ on:
         required: false
         type: boolean
         default: true
+      setup-quarto:
+        description: 'Whether to install Quarto (needed for packages with Quarto vignettes).'
+        required: false
+        type: boolean
+        default: false
+      setup-pandoc:
+        description: 'Whether to install pandoc.'
+        required: false
+        type: boolean
+        default: true
+      setup-tinytex:
+        description: 'Whether to install TinyTeX (provides pdflatex for PDF manual builds).'
+        required: false
+        type: boolean
+        default: false
+      extra-packages:
+        description: 'Additional CI tool packages to install, on top of rcmdcheck (and pkgbuild when build-binary is true). One package per line.'
+        required: false
+        type: string
+        default: ''
 name: R-CMD-check
 
 permissions: read-all
@@ -47,12 +67,14 @@ jobs:
         uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
         with:
           r-version: ${{ matrix.config.r }}
-          setup-pandoc: 'true'
-          setup-tinytex: 'false'
+          setup-pandoc: ${{ inputs.setup-pandoc }}
+          setup-tinytex: ${{ inputs.setup-tinytex }}
+          setup-quarto: ${{ inputs.setup-quarto }}
           ignore-renv: ${{ inputs.ignore-renv }}
           extra-packages: |
             rcmdcheck
             ${{ inputs.build-binary && 'pkgbuild' || '' }}
+            ${{ inputs.extra-packages }}
 
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
