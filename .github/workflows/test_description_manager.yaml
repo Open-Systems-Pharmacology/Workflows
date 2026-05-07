@@ -1,0 +1,25 @@
+---
+name: test-description-manager
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/test_description_manager.yaml'
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/test_description_manager.yaml'
+
+jobs:
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install bats
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Run bats tests
+        run: bats .github/scripts/tests/
