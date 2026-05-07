@@ -12,6 +12,9 @@ on:
       - '.github/scripts/**'
       - '.github/workflows/test_description_manager.yaml'
 
+permissions:
+  contents: read
+
 jobs:
   bats:
     runs-on: ubuntu-latest
