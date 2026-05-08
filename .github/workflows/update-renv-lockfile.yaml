@@ -10,7 +10,10 @@ on:
         description: 'JSON array of OS names for the test matrix. Defaults to all three platforms.'
         required: false
         type: string
-        default: '["windows-latest", "ubuntu-latest", "macos-latest"]'
+        default: >-
+          ["${{ vars.GHA_DEFAULT_RUNNER_WINDOWS || 'windows-latest' }}",
+          "${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}",
+          "${{ vars.GHA_DEFAULT_RUNNER_MACOS || 'macos-latest' }}"]
     secrets:
       private-key:
         required: true
