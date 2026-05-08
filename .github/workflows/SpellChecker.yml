@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   Spellcheck:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
     - uses: actions/checkout@v5
       with:

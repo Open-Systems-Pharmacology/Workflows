@@ -23,7 +23,7 @@ name: pkgdown
 
 jobs:
   build-site:
-    runs-on: windows-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_WINDOWS || 'windows-latest' }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
@@ -58,7 +58,7 @@ jobs:
     permissions:
       contents: write
     needs: [build-site] # The second job must depend on the first one to complete before running and uses ubuntu-latest instead of windows.
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v6

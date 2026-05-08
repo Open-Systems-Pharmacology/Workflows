@@ -17,7 +17,7 @@ on:
 
 jobs:
   update-renv-lock:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     name: Update renv.lock
     env:
       GITHUB_PAT: ${{ github.token }}
@@ -97,7 +97,7 @@ jobs:
 
   commit-renv-lock:
     needs: [update-renv-lock, test-on-platforms]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     if: needs.update-renv-lock.outputs.lockfile-changed == 'true' && needs.test-on-platforms.result == 'success'
     permissions:
       contents: write

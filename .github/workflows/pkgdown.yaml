@@ -29,7 +29,7 @@ name: pkgdown
 jobs:
   check-changes:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     permissions:
       pull-requests: read
     outputs:
@@ -43,7 +43,7 @@ jobs:
   pkgdown:
     needs: [check-changes]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.check-changes.outputs.docs == 'true') }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     # Only restrict concurrency for non-PR jobs
     concurrency:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}

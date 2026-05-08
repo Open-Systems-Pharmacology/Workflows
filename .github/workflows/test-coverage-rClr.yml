@@ -23,7 +23,7 @@ name: test-pkg-and-coverage
 
 jobs:
   test-pkg-and-coverage:
-    runs-on: windows-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_WINDOWS || 'windows-latest' }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
