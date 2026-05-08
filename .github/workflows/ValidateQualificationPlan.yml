@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate-with-referenced-schema:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -28,7 +28,7 @@ jobs:
           INPUT_SCHEMA: ./OSP_Qualification_Plan_Schema.json
           INPUT_JSONS: ${{ inputs.qualification-plan }}
   validate-with-latest-released-schema:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v5
         with:

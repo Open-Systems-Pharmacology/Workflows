@@ -28,7 +28,7 @@ on:
 jobs:
   badge:
     name: Badge proxy
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
       - name: Log upstream conclusion (event)
         run: |

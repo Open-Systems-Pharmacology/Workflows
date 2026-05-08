@@ -39,7 +39,7 @@ on:
 
 jobs:
   get-latest-successful-artifact:
-   runs-on: ubuntu-latest
+   runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
    outputs:
       run-id: ${{ steps.find-artifact.outputs.run-id }}
       artifact-name: ${{ steps.find-artifact.outputs.artifact-name }}

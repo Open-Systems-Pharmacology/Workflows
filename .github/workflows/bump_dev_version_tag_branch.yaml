@@ -20,7 +20,7 @@ jobs:
     if: github.event_name != 'pull_request'
     concurrency: #prevent concurrent runs
       group: ${{ github.workflow }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     outputs:
       run_next_job: ${{ steps.set_output.outputs.run_next_job }}
     steps:
@@ -68,7 +68,7 @@ jobs:
     if: needs.detect-changes.outputs.run_next_job == 'true'
     concurrency: #prevent concurrent runs
       group: ${{ github.workflow }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
