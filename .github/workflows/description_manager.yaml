@@ -15,6 +15,31 @@ on:
         type: string
         required: false
         default: 'main'
+      tracked-files:
+        description: |
+          Newline-separated glob patterns of files whose changes should trigger
+          a DESCRIPTION update. Defaults cover the typical R-package layout
+          (R/, tests/, vignettes/, inst/, man/, data/, data-raw/, src/, shared/,
+          README.{md,Rmd}, README assets, NAMESPACE, NEWS.md, DESCRIPTION).
+          Override to extend or narrow for your repo.
+        type: string
+        required: false
+        default: |
+          README.md
+          README.Rmd
+          README*.png
+          NAMESPACE
+          DESCRIPTION
+          NEWS.md
+          **.R
+          tests/**
+          vignettes/**
+          inst/**
+          man/**
+          data/**
+          data-raw/**
+          src/**
+          shared/**
 
 jobs:
   detect-changes:
@@ -32,33 +57,11 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Checkout Workflows repo (for helper scripts)
-        uses: actions/checkout@v6
-        with:
-          repository: Open-Systems-Pharmacology/Workflows
-          ref: ${{ inputs.workflows-ref }}
-          path: .workflows-repo
-
-      - name: Build ignore globs from .Rbuildignore
-        id: ignore_globs
-        shell: bash
-        run: |
-          # Translate .Rbuildignore (Perl regex) into glob patterns suitable
-          # for tj-actions/changed-files `files_ignore`.
-          globs=$(.workflows-repo/.github/scripts/rbuildignore_to_globs.sh .Rbuildignore)
-          {
-            echo "globs<<EOF"
-            echo "$globs"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Detect changes
         id: changes
         uses: tj-actions/changed-files@v47
         with:
-          # Treat every file as relevant *except* those matched by .Rbuildignore.
-          # This way we don't have to maintain a hardcoded allow-list.
-          files_ignore: ${{ steps.ignore_globs.outputs.globs }}
+          files: ${{ inputs.tracked-files }}
 
       - name: Changes detected
         id: set_output
