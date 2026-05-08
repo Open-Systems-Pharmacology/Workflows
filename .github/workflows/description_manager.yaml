@@ -30,23 +30,35 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 2
+
+      - name: Checkout Workflows repo (for helper scripts)
+        uses: actions/checkout@v6
+        with:
+          repository: Open-Systems-Pharmacology/Workflows
+          ref: ${{ inputs.workflows-ref }}
+          path: .workflows-repo
+
+      - name: Build ignore globs from .Rbuildignore
+        id: ignore_globs
+        shell: bash
+        run: |
+          # Translate .Rbuildignore (Perl regex) into glob patterns suitable
+          # for tj-actions/changed-files `files_ignore`.
+          globs=$(.workflows-repo/.github/scripts/rbuildignore_to_globs.sh .Rbuildignore)
+          {
+            echo "globs<<EOF"
+            echo "$globs"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Detect changes
         id: changes
         uses: tj-actions/changed-files@v47
         with:
-          files: |
-            README.md
-            NAMESPACE
-            DESCRIPTION
-            NEWS.md
-            .Rbuildignore
-            **.R
-            tests/**
-            vignettes/**
-            inst/**
-            man/**
+          # Treat every file as relevant *except* those matched by .Rbuildignore.
+          # This way we don't have to maintain a hardcoded allow-list.
+          files_ignore: ${{ steps.ignore_globs.outputs.globs }}
 
       - name: Changes detected
         id: set_output
@@ -70,13 +82,13 @@ jobs:
             done
           } >> "$GITHUB_STEP_SUMMARY"
 
-          echo "run_next_job=true" >> $GITHUB_OUTPUT
+          echo "run_next_job=true" >> "$GITHUB_OUTPUT"
 
       - name: No changes
         if: steps.changes.outputs.any_changed != 'true'
         run: |
           echo "::notice title=No changes::No functional changes detected, DESCRIPTION will not be updated"
-          echo "run_next_job=false" >> $GITHUB_OUTPUT
+          echo "run_next_job=false" >> "$GITHUB_OUTPUT"
 
   update-description:
     needs: detect-changes
@@ -90,7 +102,7 @@ jobs:
       - name: Checkout caller repo
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
       - name: Checkout Workflows repo (for helper scripts)
         uses: actions/checkout@v6
