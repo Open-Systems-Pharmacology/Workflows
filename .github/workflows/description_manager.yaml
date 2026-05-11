@@ -1,0 +1,234 @@
+---
+# Reusable workflow that, when triggered by a merge:
+#  - On a development version (x.y.z.NNNN): bumps the trailing component and
+#    strips @*release from Remotes.
+#  - On a release version (x.y.z): leaves Version alone, adds @*release to
+#    Remotes, and pushes a vX.Y.Z tag.
+#  - Commits the resulting DESCRIPTION change in either case.
+name: description-manager
+
+on:
+  workflow_call:
+    inputs:
+      workflows-ref:
+        description: 'Ref of Open-Systems-Pharmacology/Workflows to load helper scripts from'
+        type: string
+        required: false
+        default: 'main'
+      tracked-files:
+        description: |
+          Newline-separated glob patterns of files whose changes should trigger
+          a DESCRIPTION update. Defaults cover the typical R-package layout
+          (R/, tests/, vignettes/, inst/, man/, data/, data-raw/, src/, shared/,
+          README.{md,Rmd}, README assets, NAMESPACE, NEWS.md, DESCRIPTION).
+          Override to extend or narrow for your repo.
+        type: string
+        required: false
+        default: |
+          README.md
+          README.Rmd
+          README*.png
+          NAMESPACE
+          DESCRIPTION
+          NEWS.md
+          **.R
+          tests/**
+          vignettes/**
+          inst/**
+          man/**
+          data/**
+          data-raw/**
+          src/**
+          shared/**
+
+jobs:
+  detect-changes:
+    # Only run on push (e.g. merge to main). Skip on workflow_dispatch,
+    # schedule, pull_request, etc. — those don't represent a real "merge"
+    # against which the changed-files comparison is meaningful.
+    if: github.event_name == 'push'
+    concurrency: #prevent concurrent runs on the same ref
+      group: ${{ github.workflow }}-${{ github.ref }}
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
+    outputs:
+      run_next_job: ${{ steps.set_output.outputs.run_next_job }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        uses: tj-actions/changed-files@v47
+        with:
+          files: ${{ inputs.tracked-files }}
+
+      - name: Changes detected
+        id: set_output
+        if: steps.changes.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
+          ALL_CHANGED_FILES_COUNT: ${{ steps.changes.outputs.all_changed_files_count }}
+        run: |
+          # Single-line annotation (GHA notices don't render newlines).
+          # Comma-separated file list for the headline; full markdown list in the run summary.
+          csv=$(echo "$ALL_CHANGED_FILES" | tr ' ' ',' | sed 's/,/, /g')
+          echo "::notice title=Changes detected::${ALL_CHANGED_FILES_COUNT} file(s) changed, triggering DESCRIPTION update: ${csv}"
+
+          {
+            echo "## Changes detected"
+            echo ""
+            echo "**${ALL_CHANGED_FILES_COUNT}** file(s) changed, triggering DESCRIPTION update:"
+            echo ""
+            for file in ${ALL_CHANGED_FILES}; do
+              echo "- \`${file}\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "run_next_job=true" >> "$GITHUB_OUTPUT"
+
+      - name: No changes
+        if: steps.changes.outputs.any_changed != 'true'
+        run: |
+          echo "::notice title=No changes::No functional changes detected, DESCRIPTION will not be updated"
+          echo "run_next_job=false" >> "$GITHUB_OUTPUT"
+
+  update-description:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.run_next_job == 'true'
+    concurrency: #prevent concurrent runs on the same ref
+      group: ${{ github.workflow }}-${{ github.ref }}
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout caller repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Checkout Workflows repo (for helper scripts)
+        uses: actions/checkout@v6
+        with:
+          repository: Open-Systems-Pharmacology/Workflows
+          ref: ${{ inputs.workflows-ref }}
+          path: .workflows-repo
+
+      - name: Manage DESCRIPTION
+        id: manage
+        shell: bash
+        run: .workflows-repo/.github/scripts/manage_description.sh DESCRIPTION >> "$GITHUB_OUTPUT"
+
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        id: auto-commit
+        if: success()
+        with:
+          commit_message: '🤖 Update DESCRIPTION (version ${{ steps.manage.outputs.PKG_VERSION }}). [skip actions]'
+          file_pattern: 'DESCRIPTION'
+          # Empty tagging_message => no tag pushed (only tag on release versions)
+          tagging_message: ${{ steps.manage.outputs.IS_DEV_VERSION == 'false' && format('v{0}', steps.manage.outputs.PKG_VERSION) || '' }}
+
+      - name: Report commit & tag
+        if: always()
+        shell: bash
+        env:
+          CHANGES_DETECTED: ${{ steps.auto-commit.outputs.changes_detected }}
+          COMMIT_HASH: ${{ steps.auto-commit.outputs.commit_hash }}
+          OLD_VERSION: ${{ steps.manage.outputs.OLD_VERSION }}
+          PKG_VERSION: ${{ steps.manage.outputs.PKG_VERSION }}
+          IS_DEV_VERSION: ${{ steps.manage.outputs.IS_DEV_VERSION }}
+          REMOTES_ACTION: ${{ steps.manage.outputs.REMOTES_ACTION }}
+          REMOTES_BEFORE_B64: ${{ steps.manage.outputs.REMOTES_BEFORE_B64 }}
+          REMOTES_AFTER_B64: ${{ steps.manage.outputs.REMOTES_AFTER_B64 }}
+          REPO: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          # Notices (single-line)
+          if [ "$CHANGES_DETECTED" = "true" ]; then
+            echo "::notice title=Commit pushed::Pushed commit $COMMIT_HASH (version $PKG_VERSION)"
+            if [ "$IS_DEV_VERSION" = "false" ]; then
+              echo "::notice title=Tag pushed::Pushed tag v$PKG_VERSION"
+            fi
+          else
+            echo "::notice title=No changes::No changes were committed by git-auto-commit-action"
+          fi
+
+          # Step summary (rich markdown)
+          {
+            echo "## Update DESCRIPTION"
+            echo ""
+            if [ "$IS_DEV_VERSION" = "true" ]; then
+              echo "**Version:** \`${OLD_VERSION}\` → \`${PKG_VERSION}\` (dev bump)"
+            else
+              echo "**Version:** \`${PKG_VERSION}\` (release, no bump)"
+            fi
+            echo ""
+
+            # Remotes diff
+            case "$REMOTES_ACTION" in
+              stripped)
+                echo "### Remotes"
+                echo ""
+                echo "Stripped \`@*release\` (dev version)."
+                echo ""
+                ;;
+              added)
+                echo "### Remotes"
+                echo ""
+                echo "Added \`@*release\` (release version)."
+                echo ""
+                ;;
+              unchanged)
+                echo "### Remotes"
+                echo ""
+                echo "_Remotes already in expected state; no edit applied._"
+                echo ""
+                ;;
+              none)
+                echo "### Remotes"
+                echo ""
+                echo "_No \`Remotes:\` field in DESCRIPTION; nothing to adjust._"
+                echo ""
+                ;;
+            esac
+
+            if [ "$REMOTES_ACTION" = "stripped" ] || [ "$REMOTES_ACTION" = "added" ]; then
+              echo "<details><summary>Remotes block before & after</summary>"
+              echo ""
+              echo "**Before:**"
+              echo ""
+              echo '```'
+              # Decoded block doesn't end in a newline; add one so the closing fence is on its own line.
+              echo "$REMOTES_BEFORE_B64" | base64 -d
+              echo ""
+              echo '```'
+              echo ""
+              echo "**After:**"
+              echo ""
+              echo '```'
+              echo "$REMOTES_AFTER_B64" | base64 -d
+              echo ""
+              echo '```'
+              echo ""
+              echo "</details>"
+              echo ""
+            fi
+
+            if [ "$CHANGES_DETECTED" = "true" ]; then
+              short_sha="${COMMIT_HASH:0:7}"
+              commit_url="${SERVER_URL}/${REPO}/commit/${COMMIT_HASH}"
+              echo "### Pushed"
+              echo ""
+              echo "- **Commit:** [\`${short_sha}\`](${commit_url})"
+              if [ "$IS_DEV_VERSION" = "false" ]; then
+                tag_url="${SERVER_URL}/${REPO}/releases/tag/v${PKG_VERSION}"
+                echo "- **Tag:** [\`v${PKG_VERSION}\`](${tag_url})"
+              else
+                echo "- **Tag:** _(none — dev bumps are not tagged)_"
+              fi
+            else
+              echo "### Nothing pushed"
+              echo ""
+              echo "\`git-auto-commit-action\` reported no changes to commit."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

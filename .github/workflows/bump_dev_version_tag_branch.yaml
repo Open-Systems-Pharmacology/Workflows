@@ -1,8 +1,18 @@
 ---
-# This reusable workflow will, if triggered by a merge:
-#  - Bump version if the current version is development (x.y.z.9000+) & if functional changes are detected.
-#  - Specify Remotes to point to @*release versions for the current package released version
-#  - Tag the target branch with version number (only for non-dev versions)
+# DEPRECATED: This workflow now delegates to description_manager.yaml.
+#
+# Why: description_manager.yaml does the same thing (bump dev version, toggle
+# @*release in Remotes, tag releases) without the GitHub-App-token machinery,
+# uses a tested helper script, and reports a richer step summary.
+#
+# Migration: change your caller from
+#   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/bump_dev_version_tag_branch.yaml@<ref>
+# to
+#   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/description_manager.yaml@<ref>
+# and drop the `app-id` / `private-key` inputs.
+#
+# This shim keeps the old API alive (inputs and secret remain accepted but are
+# ignored) so existing callers continue to work.
 name: bump-dev-version
 
 on:
@@ -13,147 +23,19 @@ on:
         required: true
     secrets:
       private-key:
-          required: true
+        required: true
 
 jobs:
-  detect-changes:
-    if: github.event_name != 'pull_request'
-    concurrency: #prevent concurrent runs
-      group: ${{ github.workflow }}
+  deprecation-notice:
+    if: github.event_name == 'push'
     runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
-    outputs:
-      run_next_job: ${{ steps.set_output.outputs.run_next_job }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Detect changes
-        id: changes
-        uses: tj-actions/changed-files@v47
-        with:
-          files: |
-            README.md
-            NAMESPACE
-            DESCRIPTION
-            NEWS.md
-            .Rbuildignore
-            **.R
-            tests/**
-            vignettes/**
-            inst/**
-            man/**
-
-      - name: Changes detected
-        id: set_output
-        if: steps.changes.outputs.any_changed == 'true'
-        env:
-          ALL_CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
-        run: | #echo a notice with a list of changed files
-          list=''
-          for file in ${ALL_CHANGED_FILES}; do
-            list+="\t- $file,\n"
-          done
-          echo -e "::notice::Detected changes in files, Version will be bumped. List of changes:\n$list"
-          echo "run_next_job=true" >> $GITHUB_OUTPUT
-
-      - name: No changes
-        if: steps.changes.outputs.any_changed != 'true'
+      - name: Emit deprecation warning
         run: |
-          echo "No functionalchanges detected, version will not be bumped"
-          echo "run_next_job=false" >> $GITHUB_OUTPUT
+          echo "::warning title=Deprecated workflow::bump_dev_version_tag_branch.yaml is deprecated. Migrate callers to .github/workflows/description_manager.yaml — the app-id input and private-key secret are no longer needed."
 
-  bump-dev-version:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.run_next_job == 'true'
-    concurrency: #prevent concurrent runs
-      group: ${{ github.workflow }}
-    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+  delegate:
+    needs: deprecation-notice
+    uses: ./.github/workflows/description_manager.yaml
     permissions:
       contents: write
-    steps:
-
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ inputs.app-id }}
-          private-key: ${{ secrets.private-key }}
-
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Change DESCRIPTION file
-        shell: bash
-        run: |
-          # Read current version from DESCRIPTION
-          version=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')
-          echo "Current version: $version"
-
-          # Check if version is a dev version (has 4 components, e.g. 1.2.3.9000)
-          if [[ "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.([0-9]+)$ ]]; then
-            base="${BASH_REMATCH[1]}"
-            dev=$((BASH_REMATCH[2] + 1))
-            new_version="${base}.${dev}"
-            echo "Dev version detected. Bumping: $version -> $new_version"
-            sed -i "s/^Version:.*/Version: $new_version/" DESCRIPTION
-            is_dev=true
-          else
-            echo "Release version detected, no version bump needed."
-            is_dev=false
-          fi
-
-          # Adjust Remotes field based on version type
-          if grep -q '^Remotes:' DESCRIPTION; then
-            if [ "$is_dev" = true ]; then
-              # Remove @*release from remotes
-              awk '
-                /^Remotes:/ { in_remotes=1; print; next }
-                in_remotes && /^[^ \t]/ { in_remotes=0 }
-                in_remotes { gsub(/@\*release/, ""); print; next }
-                { print }
-              ' DESCRIPTION > DESCRIPTION.tmp && mv DESCRIPTION.tmp DESCRIPTION
-              echo "Remotes: removed @*release"
-            else
-              # Add @*release to remotes that don't already have it
-              awk '
-                /^Remotes:/ { in_remotes=1; print; next }
-                in_remotes && /^[^ \t]/ { in_remotes=0 }
-                in_remotes {
-                  # For each org/repo entry without @*release, append it
-                  if ($0 !~ /@\*release/) {
-                    gsub(/([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)(,?)$/, "\\1@*release\\2")
-                  }
-                  print; next
-                }
-                { print }
-              ' DESCRIPTION > DESCRIPTION.tmp && mv DESCRIPTION.tmp DESCRIPTION
-              echo "Remotes: added @*release"
-            fi
-
-            echo "Updated Remotes:"
-            awk '/^Remotes:/{in_r=1; print; next} in_r && /^[^ \t]/{exit} in_r{print}' DESCRIPTION
-          else
-            echo "No Remotes field found in DESCRIPTION"
-          fi
-
-          # Export version info for subsequent steps
-          final_version=$(grep '^Version:' DESCRIPTION | sed 's/^Version:[[:space:]]*//')
-          echo "PKG_VERSION=$final_version" >> $GITHUB_ENV
-          echo "IS_DEV_VERSION=$is_dev" >> $GITHUB_ENV
-
-      - uses: EndBug/add-and-commit@v9
-        if: success()
-        with:
-          message: '🤖 Bump version. [skip actions]'
-          default_author: github_actions
-          add: 'DESCRIPTION'
-
-      - uses: thejeff77/action-push-tag@v1.0.0
-        if: success() && env.IS_DEV_VERSION == 'false'
-        with:
-          tag: v${{ env.PKG_VERSION }}
-          force: true
