@@ -5,7 +5,10 @@ on:
         description: 'JSON array of {os, r} objects for the build matrix. Defaults to all three platforms with R release.'
         required: false
         type: string
-        default: '[{"os": "windows-latest", "r": "release"}, {"os": "ubuntu-latest", "r": "release"}, {"os": "macos-latest", "r": "release"}]'
+        default: >-
+          [{"os": "${{ vars.GHA_DEFAULT_RUNNER_WINDOWS || 'windows-latest' }}", "r": "release"},
+          {"os": "${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}", "r": "release"},
+          {"os": "${{ vars.GHA_DEFAULT_RUNNER_MACOS || 'macos-latest' }}", "r": "release"}]
 
 name: R-CMD-check (released deps)
 

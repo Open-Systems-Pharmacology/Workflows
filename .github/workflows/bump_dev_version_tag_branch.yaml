@@ -28,7 +28,7 @@ on:
 jobs:
   deprecation-notice:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
       - name: Emit deprecation warning
         run: |

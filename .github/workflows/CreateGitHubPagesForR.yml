@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_WINDOWS || 'windows-latest' }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       PKGDOWN_MODE: ${{ inputs.pkgdown_mode }}
@@ -57,7 +57,7 @@ jobs:
     concurrency: ci-${{ github.ref }}
     # The second job must depend on the first one to complete before running and uses ubuntu-latest instead of windows.
     needs: [build] 
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
