@@ -2,17 +2,20 @@
 # DEPRECATED: This workflow now delegates to description_manager.yaml.
 #
 # Why: description_manager.yaml does the same thing (bump dev version, toggle
-# @*release in Remotes, tag releases) without the GitHub-App-token machinery,
-# uses a tested helper script, and reports a richer step summary.
+# @*release in Remotes, tag releases), uses a tested helper script, and reports
+# a richer step summary.
 #
 # Migration: change your caller from
 #   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/bump_dev_version_tag_branch.yaml@<ref>
 # to
 #   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/description_manager.yaml@<ref>
-# and drop the `app-id` / `private-key` inputs.
+# Keep forwarding `app-id` / `private-key` only if the target branch is
+# protected; otherwise the defaults (GITHUB_TOKEN) are sufficient and the
+# inputs can be dropped.
 #
-# This shim keeps the old API alive (inputs and secret remain accepted but are
-# ignored) so existing callers continue to work.
+# This shim keeps the old API alive: `app-id` / `private-key` are forwarded to
+# description_manager.yaml so existing callers continue to push to protected
+# branches without changes.
 name: bump-dev-version
 
 on:
@@ -32,10 +35,14 @@ jobs:
     steps:
       - name: Emit deprecation warning
         run: |
-          echo "::warning title=Deprecated workflow::bump_dev_version_tag_branch.yaml is deprecated. Migrate callers to .github/workflows/description_manager.yaml — the app-id input and private-key secret are no longer needed."
+          echo "::warning title=Deprecated workflow::bump_dev_version_tag_branch.yaml is deprecated. Migrate callers to .github/workflows/description_manager.yaml. Keep forwarding app-id / private-key only when pushing to a protected branch."
 
   delegate:
     needs: deprecation-notice
     uses: ./.github/workflows/description_manager.yaml
     permissions:
       contents: write
+    with:
+      app-id: ${{ inputs.app-id }}
+    secrets:
+      private-key: ${{ secrets.private-key }}
