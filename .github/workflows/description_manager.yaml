@@ -15,6 +15,15 @@ on:
         type: string
         required: false
         default: 'main'
+      app-id:
+        description: |
+          GitHub App ID used to mint a push token. Required when the target
+          branch is protected and the App's identity is in the ruleset's
+          bypass list. Leave empty to fall back to GITHUB_TOKEN (sufficient
+          for unprotected branches).
+        type: string
+        required: false
+        default: ''
       tracked-files:
         description: |
           Newline-separated glob patterns of files whose changes should trigger
@@ -40,6 +49,12 @@ on:
           data-raw/**
           src/**
           shared/**
+    secrets:
+      private-key:
+        description: |
+          Private key (PEM) for the GitHub App referenced by `app-id`. Required
+          together with `app-id` when pushing to a protected branch.
+        required: false
 
 jobs:
   detect-changes:
@@ -102,10 +117,19 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        if: inputs.app-id != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+
       - name: Checkout caller repo
         uses: actions/checkout@v6
         with:
           fetch-depth: 2
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
       - name: Checkout Workflows repo (for helper scripts)
         uses: actions/checkout@v6
