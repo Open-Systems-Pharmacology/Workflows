@@ -114,5 +114,5 @@ jobs:
         if: inputs.build-binary
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.PKG_NAME }}-v${{ env.PKG_VERSION }}-${{runner.os}}-r_${{ env.R_VERSION }}
+          name: ${{ env.PKG_NAME }}-v${{ env.PKG_VERSION }}-${{ matrix.config.os }}-r_${{ env.R_VERSION }}
           path: ${{ runner.temp }}/built_package/*
