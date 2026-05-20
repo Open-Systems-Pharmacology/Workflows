@@ -1,0 +1,28 @@
+name: Dependency Review
+# Dependency review action following the description in:
+# https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configuring-the-dependency-review-action
+
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 'Checkout Repository'
+      uses: actions/checkout@v6
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v5
+      with:
+        # Possible values: "critical", "high", "moderate", "low"
+        fail-on-severity: high
+
+        comment-summary-in-pr: on-failure
+        show-patched-versions: true
+        
+        # Skip these GitHub Advisory Database IDs during detection (optional)
+        # Possible values: Any valid GitHub Advisory Database ID from https://github.com/advisories
+        # allow-ghsas: GHSA-abcd-1234-5679, GHSA-efgh-1234-5679
