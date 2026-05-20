@@ -41,6 +41,11 @@ on:
         required: false
         type: string
         default: ''
+      dotnet-version:
+        description: '.NET SDK version to install on all runners (forwarded to setup-r-env). Set to an empty string to skip setup-dotnet and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
+        required: false
+        type: string
+        default: '8.0.x'
 name: R-CMD-check
 
 permissions: read-all
@@ -74,6 +79,7 @@ jobs:
           setup-tinytex: ${{ inputs.setup-tinytex }}
           setup-quarto: ${{ inputs.setup-quarto }}
           ignore-renv: ${{ inputs.ignore-renv }}
+          dotnet-version: ${{ inputs.dotnet-version }}
           extra-packages: |
             rcmdcheck
             ${{ inputs.build-binary && 'pkgbuild' || '' }}

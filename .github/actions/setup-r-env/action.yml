@@ -23,7 +23,7 @@ inputs:
     required: false
     default: 'false'
   dotnet-version:
-    description: '.NET version to install on macOS (e.g. "8.0.x", "9.0.x")'
+    description: '.NET SDK version to install on all runners (e.g. "8.0.x", "10.0.x"). Set to an empty string to skip the setup-dotnet step and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
     required: false
     default: '8.0.x'
   ignore-renv:
@@ -47,7 +47,7 @@ runs:
   using: composite
   steps:
     - name: Setup .NET
-      if: runner.os == 'macOS'
+      if: inputs.dotnet-version != ''
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
