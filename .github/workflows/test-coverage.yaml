@@ -9,7 +9,7 @@ on:
         type: boolean
         default: false
       dotnet-version:
-        description: '.NET SDK version to install on all runners (forwarded to setup-r-env). Set to an empty string to skip setup-dotnet.'
+        description: '.NET SDK version to install on all runners (forwarded to setup-r-env). Set to an empty string to skip setup-dotnet and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
         required: false
         type: string
         default: '8.0.x'
