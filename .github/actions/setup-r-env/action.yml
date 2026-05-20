@@ -46,10 +46,6 @@ outputs:
 runs:
   using: composite
   steps:
-    # Install on every runner, not just macOS. GitHub-hosted Linux and Windows
-    # images do ship some .NET SDK versions preinstalled, but they lag behind
-    # current majors (e.g. no .NET 10 yet as of early 2026), so consumers that
-    # load assemblies targeting newer TFMs need an explicit install.
     - name: Setup .NET
       if: inputs.dotnet-version != ''
       uses: actions/setup-dotnet@v5
