@@ -23,7 +23,7 @@ inputs:
     required: false
     default: 'false'
   dotnet-version:
-    description: '.NET version to install on macOS (e.g. "8.0.x", "9.0.x")'
+    description: '.NET SDK version to install on all runners (e.g. "8.0.x", "10.0.x"). Set to an empty string to skip the setup-dotnet step.'
     required: false
     default: '8.0.x'
   ignore-renv:
@@ -46,8 +46,12 @@ outputs:
 runs:
   using: composite
   steps:
+    # Install on every runner, not just macOS. GitHub-hosted Linux and Windows
+    # images do ship some .NET SDK versions preinstalled, but they lag behind
+    # current majors (e.g. no .NET 10 yet as of early 2026), so consumers that
+    # load assemblies targeting newer TFMs need an explicit install.
     - name: Setup .NET
-      if: runner.os == 'macOS'
+      if: inputs.dotnet-version != ''
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
