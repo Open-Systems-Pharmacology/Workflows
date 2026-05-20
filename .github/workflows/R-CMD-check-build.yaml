@@ -72,7 +72,8 @@ jobs:
 
       - name: Setup R environment
         id: setup-r-env
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
+        # TODO: revert to @main once this branch merges
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@dotnet-version-passthrough
         with:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: ${{ inputs.setup-pandoc }}
