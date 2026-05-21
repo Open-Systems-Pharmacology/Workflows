@@ -10,3 +10,5 @@ permissions:
 jobs:
   dependency-review:
     uses: ./.github/workflows/dependency-review.yml
+    with:
+      comment-summary-in-pr: 'always'
