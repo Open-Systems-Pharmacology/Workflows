@@ -1,0 +1,12 @@
+name: Dependency Review
+# Dependency review action following the description in:
+
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    uses: ./.github/workflows/dependency-review.yml
