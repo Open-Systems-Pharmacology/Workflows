@@ -26,6 +26,11 @@ on:
         required: false
         type: string
         default: ''
+      license-check:
+        description: 'Enable or disable the license check performed by the action.'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -44,3 +49,4 @@ jobs:
         comment-summary-in-pr: ${{ inputs.comment-summary-in-pr }}
         show-patched-versions: ${{ inputs.show-patched-versions }}
         allow-ghsas: ${{ inputs.allow-ghsas }}
+        license-check: ${{ inputs.license-check }}
