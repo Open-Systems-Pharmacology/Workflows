@@ -1,0 +1,54 @@
+name: Dependency Review
+# Dependency review action following the description in:
+# https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configuring-the-dependency-review-action
+# Should be called on pull_request by the caller
+
+on:
+  workflow_call:
+    inputs:
+      fail-on-severity:
+        description: 'Possible values: "critical", "high", "moderate", "low"'
+        required: false
+        type: string
+        default: 'high'
+      comment-summary-in-pr:
+        description: 'Possible values: "always", "on-failure", "never"'
+        required: false
+        type: string
+        default: 'on-failure'
+      show-patched-versions:
+        description: 'When set to true, the vulnerability summary table will include an additional column showing the first patched version for each vulnerability. This requires additional API calls to fetch advisory data.'
+        required: false
+        type: boolean
+        default: true
+      allow-ghsas:
+        description: 'List of GitHub Advisory Database (https://github.com/advisories) IDs that can be skipped, separated by comma, e.g. "GHSA-1234, GHSA-5678"'
+        required: false
+        type: string
+        default: ''
+      license-check:
+        description: 'Enable or disable the license check performed by the action.'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 'Checkout Repository'
+      uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v5
+      with:
+        fail-on-severity: ${{ inputs.fail-on-severity }}
+        comment-summary-in-pr: ${{ inputs.comment-summary-in-pr }}
+        show-patched-versions: ${{ inputs.show-patched-versions }}
+        allow-ghsas: ${{ inputs.allow-ghsas }}
+        license-check: ${{ inputs.license-check }}
