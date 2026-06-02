@@ -31,7 +31,13 @@ inputs:
     required: false
     default: 'false'
   extra-packages:
-    description: 'CI tool packages (e.g., covr, pkgdown, rcmdcheck). For renv projects, installed before renv restore (latest version; restore overwrites if package is in renv.lock). For non-renv projects, forwarded to setup-r-dependencies.'
+    description: >-
+      CI tool packages (e.g., covr, pkgdown, rcmdcheck), one per line. For renv
+      projects (all OSes), installed after renv restore into .libPaths()[1] so
+      the check step finds them: only packages not already present are installed,
+      and with upgrade = FALSE so the renv.lock-pinned dependency versions that
+      restore just installed are preserved. For non-renv projects, forwarded to
+      setup-r-dependencies.
     required: false
     default: ''
 
@@ -76,30 +82,6 @@ runs:
       run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Install extra packages (renv projects)
-      if: inputs.extra-packages != '' && steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
-      shell: Rscript {0}
-      env:
-        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
-      run: |
-        pkgs <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "\\s+")[[1]]
-        pkgs <- pkgs[nzchar(pkgs)]
-        if (length(pkgs) > 0L) {
-          # Install pak from r-lib's prebuilt binary repo to avoid source
-          # compilation when no CRAN/RSPM binary is yet available (e.g. days
-          # after a new R release).
-          install.packages(
-            "pak",
-            repos = sprintf(
-              "https://r-lib.github.io/p/pak/stable/%s/%s/%s",
-              .Platform$pkgType,
-              R.Version()$os,
-              R.Version()$arch
-            )
-          )
-          pak::pkg_install(pkgs)
-        }
-
     - name: Setup renv (Linux/macOS)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'
       uses: r-lib/actions/setup-renv@v2
@@ -131,6 +113,52 @@ runs:
         lib <- Sys.getenv("R_LIBS_USER")
         if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", lib = lib)
         renv::restore(library = lib)
+
+    # Runs after both setup branches so the library is populated. .libPaths()[1]
+    # is the library the check step reads on every OS (renv project lib on
+    # Linux/macOS, redirected R_LIBS_USER on Windows). Installs only missing
+    # packages: the Windows cache key excludes extra-packages, so a cache hit can
+    # return a lib predating a newly-added tool.
+    - name: Install extra CI tool packages (renv projects)
+      if: inputs.extra-packages != '' && steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
+      shell: Rscript {0}
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+      run: |
+        lib <- .libPaths()[1]
+        specs <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "\\s+")[[1]]
+        specs <- specs[nzchar(specs)]
+        # A bare name ("rcmdcheck") is skipped when already installed. A spec
+        # carrying a source or version ("type::pkg", "owner/repo", "pkg@ref")
+        # asks for a specific build that a namespace presence check cannot
+        # validate, so always hand it to pak (which resolves the right version
+        # and is idempotent) rather than skipping on a same-named package.
+        present <- vapply(
+          specs,
+          function(s) !grepl("[:/@]", s) && requireNamespace(s, quietly = TRUE),
+          logical(1)
+        )
+        missing <- specs[!present]
+        if (length(missing) > 0L) {
+          if (!requireNamespace("pak", quietly = TRUE)) {
+            # r-lib binary repo avoids source compilation when no CRAN/RSPM
+            # binary exists yet (e.g. days after a new R release).
+            install.packages(
+              "pak",
+              lib = lib,
+              repos = sprintf(
+                "https://r-lib.github.io/p/pak/stable/%s/%s/%s",
+                .Platform$pkgType,
+                R.Version()$os,
+                R.Version()$arch
+              )
+            )
+          }
+          # upgrade = FALSE preserves the renv.lock-pinned dep versions that
+          # restore() just installed; without it pak could replace them and the
+          # check would run against an off-lock library.
+          pak::pkg_install(missing, lib = lib, upgrade = FALSE)
+        }
 
     - name: Setup R dependencies
       if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
