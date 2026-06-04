@@ -1,22 +1,29 @@
 ---
-# DEPRECATED: This workflow now delegates to description_manager.yaml.
+# DEPRECATED: superseded by bump-dev-version.yaml + publish-release.yaml.
 #
-# Why: description_manager.yaml does the same thing (bump dev version, toggle
-# @*release in Remotes, tag releases), uses a tested helper script, and reports
-# a richer step summary.
+# Why: the old all-in-one behaviour (bump dev version on push to main, plus tag
+# release versions) is now two focused reusable workflows:
+#   - bump-dev-version.yaml: bumps the dev version on push to main (uses a tested
+#     helper script, richer step summary).
+#   - publish-release.yaml: tags release versions and publishes a GitHub Release
+#     (NEWS.md notes + per-OS binaries).
+# (PR-time Remotes sync is a third workflow, sync-remotes.yaml, which this shim
+# never performed and therefore does not call.)
 #
-# Migration: change your caller from
+# Migration: replace the single
 #   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/bump_dev_version_tag_branch.yaml@<ref>
-# to
-#   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/description_manager.yaml@<ref>
+# with two jobs:
+#   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/bump-dev-version.yaml@<ref>
+#   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/publish-release.yaml@<ref>
 # Keep forwarding `app-id` / `private-key` only if the target branch is
 # protected; otherwise the defaults (GITHUB_TOKEN) are sufficient and the
 # inputs can be dropped.
 #
-# This shim keeps the old API alive: `app-id` / `private-key` are forwarded to
-# description_manager.yaml so existing callers continue to push to protected
-# branches without changes.
-name: bump-dev-version
+# This shim keeps the old API alive: it forwards `app-id` / `private-key` to the
+# bump workflow (which pushes to the protected default branch) so existing
+# callers keep bumping and tagging without changes. publish-release tags via the
+# default GITHUB_TOKEN and needs no App token.
+name: bump_dev_version_tag_branch.yaml
 
 on:
   workflow_call:
@@ -35,14 +42,21 @@ jobs:
     steps:
       - name: Emit deprecation warning
         run: |
-          echo "::warning title=Deprecated workflow::bump_dev_version_tag_branch.yaml is deprecated. Migrate callers to .github/workflows/description_manager.yaml. Keep forwarding app-id / private-key only when pushing to a protected branch."
+          echo "::warning title=Deprecated workflow::bump_dev_version_tag_branch.yaml is deprecated. Migrate callers to .github/workflows/bump-dev-version.yaml (bump) + .github/workflows/publish-release.yaml (release). Keep forwarding app-id / private-key only when pushing to a protected branch."
 
-  delegate:
+  bump:
     needs: deprecation-notice
-    uses: ./.github/workflows/description_manager.yaml
+    uses: ./.github/workflows/bump-dev-version.yaml
     permissions:
       contents: write
     with:
       app-id: ${{ inputs.app-id }}
     secrets:
       private-key: ${{ secrets.private-key }}
+
+  release:
+    needs: deprecation-notice
+    uses: ./.github/workflows/publish-release.yaml
+    permissions:
+      contents: write
+      actions: read
