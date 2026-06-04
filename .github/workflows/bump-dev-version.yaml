@@ -1,0 +1,96 @@
+---
+# Reusable workflow that bumps the dev version on push to the default branch.
+#
+# A dev version (x.y.z.NNNN) has its trailing component incremented and the
+# change committed; a release version (x.y.z) is a no-op (no commit). Remotes are
+# not touched (they are synced in the PR by sync-remotes.yaml). Releasing
+# (tag + GitHub Release) is handled by publish-release.yaml.
+#
+# Wire this on push to the default branch from the caller. Because it pushes
+# directly to the default branch (often protected), it accepts a GitHub App
+# token (app-id / private-key) to push past a branch ruleset; without them it
+# falls back to GITHUB_TOKEN (sufficient for unprotected branches).
+name: bump-dev-version.yaml
+
+on:
+  workflow_call:
+    inputs:
+      app-id:
+        description: |
+          GitHub App ID used to mint a push token. Required when the default
+          branch is protected and the App's identity is in the ruleset's bypass
+          list. Leave empty to fall back to GITHUB_TOKEN (sufficient for
+          unprotected branches).
+        type: string
+        required: false
+        default: ''
+    secrets:
+      private-key:
+        description: |
+          Private key (PEM) for the GitHub App referenced by `app-id`. Required
+          together with `app-id` when pushing to a protected branch.
+        required: false
+
+jobs:
+  bump-dev-version:
+    concurrency: # prevent concurrent runs on the same ref
+      group: ${{ github.workflow }}-${{ github.ref }}
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        if: inputs.app-id != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+
+      - name: Checkout caller repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Workflows repo (for helper scripts)
+        uses: actions/checkout@v6
+        with:
+          repository: Open-Systems-Pharmacology/Workflows
+          ref: main
+          path: .workflows-repo
+
+      - name: Bump dev version
+        id: bump
+        shell: bash
+        run: .workflows-repo/.github/scripts/manage_description.sh bump-version DESCRIPTION >> "$GITHUB_OUTPUT"
+
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        id: auto-commit
+        if: success()
+        with:
+          commit_message: '🤖 Bump dev version to ${{ steps.bump.outputs.PKG_VERSION }}. [skip actions]'
+          file_pattern: 'DESCRIPTION'
+
+      # Report only when a bump was actually committed. A release version (or an
+      # already-current DESCRIPTION) is a no-op, so emit nothing.
+      - name: Report bump
+        if: steps.auto-commit.outputs.changes_detected == 'true'
+        shell: bash
+        env:
+          COMMIT_HASH: ${{ steps.auto-commit.outputs.commit_hash }}
+          OLD_VERSION: ${{ steps.bump.outputs.OLD_VERSION }}
+          PKG_VERSION: ${{ steps.bump.outputs.PKG_VERSION }}
+          REPO: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          short_sha="${COMMIT_HASH:0:7}"
+          commit_url="${SERVER_URL}/${REPO}/commit/${COMMIT_HASH}"
+          echo "::notice title=Dev version bumped::${OLD_VERSION} → ${PKG_VERSION} (pushed ${short_sha})"
+          {
+            echo "## Bump dev version"
+            echo ""
+            echo "**Version:** \`${OLD_VERSION}\` → \`${PKG_VERSION}\`"
+            echo ""
+            echo "- **Commit:** [\`${short_sha}\`](${commit_url})"
+          } >> "$GITHUB_STEP_SUMMARY"
