@@ -11,7 +11,8 @@
 # https://dev.open-systems-pharmacology.org/r-development-resources/collaboration_guide#publishing-the-release
 #
 # The resulting PR is validated by the caller's normal pull_request pipeline
-# (R-CMD-check etc.) before it is merged and tagged.
+# (R-CMD-check etc.) before it is merged. Tagging + the GitHub Release are a
+# separate step (publish-release.yaml), wired and triggered by the caller.
 name: release-pr.yaml
 
 on:
@@ -137,10 +138,7 @@ jobs:
 
           - \`Version\` set to \`${VERSION}\`
           - \`NEWS.md\` development heading renamed to \`${VERSION}\`
-          - \`Remotes\` pinned to \`@*release\`
-
-          Merging this PR (after CI is green) and pushing to the default branch
-          triggers the tag + GitHub Release."
+          - \`Remotes\` pinned to \`@*release\`"
             verb="Opened"
           fi
           pr_url="$(gh pr view "$branch" --json url --jq .url 2>/dev/null)"
