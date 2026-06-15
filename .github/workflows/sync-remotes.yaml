@@ -47,10 +47,16 @@ jobs:
         run: |
           set -euo pipefail
           script=.workflows-repo/.github/scripts/manage_description.sh
+          # Classify the version, surfacing the helper's own diagnostics if it
+          # fails (e.g. an unparseable Version) instead of dying with a bare
+          # exit 1. detect-version's stderr is forwarded for that reason.
+          if ! detected="$("$script" detect-version DESCRIPTION)"; then
+            echo "::error title=Version classification failed::manage_description.sh detect-version could not classify DESCRIPTION" >&2
+            exit 1
+          fi
           # Parse only IS_DEV_VERSION as literal text — never eval output derived
           # from the PR-authored DESCRIPTION (its Version field is attacker-controlled).
-          is_dev="$("$script" detect-version DESCRIPTION 2>/dev/null \
-            | awk -F= '$1=="IS_DEV_VERSION"{print $2}')"
+          is_dev="$(printf '%s\n' "$detected" | awk -F= '$1=="IS_DEV_VERSION"{print $2}')"
           case "$is_dev" in
             true|false) ;;
             *) echo "::error title=Invalid IS_DEV_VERSION::Expected true/false, got '$is_dev'" >&2; exit 1 ;;

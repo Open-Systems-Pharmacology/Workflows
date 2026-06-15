@@ -59,6 +59,7 @@ jobs:
           repository: Open-Systems-Pharmacology/Workflows
           ref: main
           path: .workflows-repo
+          persist-credentials: false
 
       - name: Bump dev version
         id: bump
