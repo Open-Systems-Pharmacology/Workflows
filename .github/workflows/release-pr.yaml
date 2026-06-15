@@ -56,6 +56,8 @@ jobs:
         with:
           app-id: ${{ inputs.app-id }}
           private-key: ${{ secrets.private-key }}
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout caller repo
         uses: actions/checkout@v6
@@ -68,6 +70,7 @@ jobs:
           repository: Open-Systems-Pharmacology/Workflows
           ref: main
           path: .workflows-repo
+          persist-credentials: false
 
       - name: Setup R
         uses: r-lib/actions/setup-r@v2

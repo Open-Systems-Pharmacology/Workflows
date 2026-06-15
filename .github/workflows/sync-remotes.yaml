@@ -39,6 +39,7 @@ jobs:
           repository: Open-Systems-Pharmacology/Workflows
           ref: main
           path: .workflows-repo
+          persist-credentials: false
 
       - name: Sync Remotes to Version kind
         id: sync
@@ -46,9 +47,15 @@ jobs:
         run: |
           set -euo pipefail
           script=.workflows-repo/.github/scripts/manage_description.sh
-          # Reuse the helper's single dev/release classification (one regex).
-          eval "$("$script" detect-version DESCRIPTION 2>/dev/null)"
-          if [ "$IS_DEV_VERSION" = "true" ]; then
+          # Parse only IS_DEV_VERSION as literal text — never eval output derived
+          # from the PR-authored DESCRIPTION (its Version field is attacker-controlled).
+          is_dev="$("$script" detect-version DESCRIPTION 2>/dev/null \
+            | awk -F= '$1=="IS_DEV_VERSION"{print $2}')"
+          case "$is_dev" in
+            true|false) ;;
+            *) echo "::error title=Invalid IS_DEV_VERSION::Expected true/false, got '$is_dev'" >&2; exit 1 ;;
+          esac
+          if [ "$is_dev" = "true" ]; then
             echo "VERSION_KIND=dev" >> "$GITHUB_OUTPUT"
             "$script" unpin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
           else
