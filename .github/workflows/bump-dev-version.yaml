@@ -56,8 +56,9 @@ jobs:
       - name: Checkout Workflows repo (for helper scripts)
         uses: actions/checkout@v6
         with:
-          repository: Open-Systems-Pharmacology/Workflows
-          ref: main
+          # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           path: .workflows-repo
           persist-credentials: false
 

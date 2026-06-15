@@ -68,8 +68,11 @@ jobs:
       - name: Checkout Workflows repo (for helper scripts)
         uses: actions/checkout@v6
         with:
-          repository: Open-Systems-Pharmacology/Workflows
-          ref: main
+          # Pull the helper script from the same repo+commit this reusable
+          # workflow was loaded from (job.workflow_*), so its CLI always matches
+          # this workflow body regardless of the caller's ref or fork.
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           path: .workflows-repo
           persist-credentials: false
 
