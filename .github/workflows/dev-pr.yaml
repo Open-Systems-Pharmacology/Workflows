@@ -1,0 +1,136 @@
+---
+# Reusable workflow that opens a "restore development mode" pull request, the way
+# a maintainer does it locally with usethis::use_dev_version(). On the current
+# default branch it:
+#   1. runs usethis::use_dev_version()  (Version x.y.z -> x.y.z.9000, and adds a
+#      `# <pkg> (development version)` NEWS.md heading)
+#   2. strips @*release from Remotes    (OSP-specific; reuses manage_description.sh)
+# then opens a PR with those changes.
+#
+# Mirrors the manual "Restoring development mode" procedure:
+# https://dev.open-systems-pharmacology.org/r-development-resources/collaboration_guide#restoring-development-mode
+#
+# The edit is metadata-only and lightweight; the resulting PR is validated by the
+# caller's normal pull_request pipeline (R-CMD-check etc.). Wire this to run after
+# a successful release and/or as a standalone workflow_dispatch.
+name: dev-pr.yaml
+
+on:
+  workflow_call:
+    inputs:
+      app-id:
+        description: 'GitHub App ID for a token that can open PRs (else GITHUB_TOKEN).'
+        type: string
+        required: false
+        default: ''
+    secrets:
+      private-key:
+        description: 'Private key (PEM) for the GitHub App referenced by `app-id`.'
+        required: false
+
+jobs:
+  dev-pr:
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        if: inputs.app-id != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout caller repo
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Workflows repo (for helper scripts)
+        uses: actions/checkout@v6
+        with:
+          # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .workflows-repo
+          persist-credentials: false
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install usethis
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::usethis
+            any::desc
+
+      - name: Restore development mode (usethis)
+        id: dev
+        shell: Rscript {0}
+        run: |
+          options(usethis.quiet = TRUE)
+          # Rscript is non-interactive, so use_dev_version() won't prompt.
+          usethis::use_dev_version()
+          ver <- as.character(desc::desc_get_version("DESCRIPTION"))
+          cat(sprintf("DEV_VERSION=%s\n", ver), file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
+
+      - name: Unpin Remotes
+        shell: bash
+        run: .workflows-repo/.github/scripts/manage_description.sh unpin-remotes DESCRIPTION >/dev/null
+
+      - name: Open restore-development PR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          DEV_VERSION: ${{ steps.dev.outputs.DEV_VERSION }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Stage only the package metadata we changed (never the .workflows-repo
+          # helper checkout, which would otherwise be added as a gitlink).
+          git add DESCRIPTION NEWS.md
+          if git diff --cached --quiet; then
+            # Already in development mode: nothing to open (silent no-op).
+            exit 0
+          fi
+
+          branch="dev-pr-${DEV_VERSION}"
+          base="$(git rev-parse --abbrev-ref HEAD)"
+          git checkout -B "$branch"
+          git commit -m "Restore development mode (${DEV_VERSION})"
+          git push --force origin "$branch"
+
+          # Only an OPEN PR counts as existing; `gh pr view` would also match a
+          # closed/merged PR on the same branch and wrongly skip creation.
+          if [ -n "$(gh pr list --state open --head "$branch" --json number --jq '.[0].number' 2>/dev/null)" ]; then
+            verb="Updated"
+          else
+            gh pr create \
+              --base "$base" \
+              --head "$branch" \
+              --title "Restore development mode (${DEV_VERSION})" \
+              --body "Restores development mode via \`usethis::use_dev_version()\`.
+
+          - \`Version\` bumped to \`${DEV_VERSION}\`
+          - \`NEWS.md\` development-version heading added
+          - \`Remotes\` unpinned (\`@*release\` stripped)
+
+          Opened automatically after a release (or via manual dispatch)."
+            verb="Opened"
+          fi
+          pr_url="$(gh pr view "$branch" --json url --jq .url 2>/dev/null)"
+          echo "::notice title=Dev PR::${verb} restore-development PR for ${DEV_VERSION} (${pr_url})"
+          {
+            echo "## Restore development mode"
+            echo ""
+            echo "${verb} a restore-development PR for \`${DEV_VERSION}\`: ${pr_url}"
+          } >> "$GITHUB_STEP_SUMMARY"

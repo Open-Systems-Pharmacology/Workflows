@@ -46,7 +46,7 @@ on:
         required: false
         type: string
         default: '8.0.x'
-name: R-CMD-check
+name: R-CMD-check-build.yaml
 
 permissions: read-all
 

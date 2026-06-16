@@ -10,11 +10,15 @@ on:
           {"os": "${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}", "r": "release"},
           {"os": "${{ vars.GHA_DEFAULT_RUNNER_MACOS || 'macos-latest' }}", "r": "release"}]
 
-name: R-CMD-check (released deps)
+name: R-CMD-check-released-deps.yaml
 
 permissions: read-all
 
 jobs:
+  # Check the package against the latest *released* OSP dependencies. This runs
+  # for every version, dev (x.y.z.NNNN) and release (x.y.z) alike: an
+  # intermediate dev version must also be testable against released deps, so the
+  # Remotes are pinned to @*release ephemerally below before the check.
   R-CMD-check-released-deps:
     runs-on: ${{ matrix.config.os }}
 
@@ -32,29 +36,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Checkout Workflows repo (for helper scripts)
+        uses: actions/checkout@v6
+        with:
+          # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .workflows-repo
+          persist-credentials: false
+
       - name: Pin Remotes to released versions
         shell: bash
         run: |
-          if ! grep -q '^Remotes:' DESCRIPTION; then
-            echo "No Remotes field found in DESCRIPTION, skipping."
-            exit 0
-          fi
-
-          # Use awk to process the multiline Remotes field in-place:
-          # - Strip any @ref suffix from each remote entry
-          # - Append @*release to each remote entry
-          awk '
-            /^Remotes:/ { in_remotes=1; print; next }
-            in_remotes && /^[^ \t]/ { in_remotes=0 }
-            in_remotes {
-              # Remove existing @ref suffix, then append @*release
-              gsub(/@[^,]*/, "")
-              gsub(/([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)/, "&@*release")
-              print; next
-            }
-            { print }
-          ' DESCRIPTION > DESCRIPTION.tmp && mv DESCRIPTION.tmp DESCRIPTION
-
+          .workflows-repo/.github/scripts/manage_description.sh pin-remotes DESCRIPTION >/dev/null
           echo "Remotes pinned to released versions:"
           awk '/^Remotes:/{in_r=1; print; next} in_r && /^[^ \t]/{exit} in_r{print}' DESCRIPTION
 

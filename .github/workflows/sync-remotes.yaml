@@ -1,0 +1,121 @@
+---
+# Reusable workflow that keeps `Remotes:` in sync with the package Version, in
+# the pull request itself.
+#
+# A dev version (x.y.z.NNNN) gets bare Remotes (no @*release); a release version
+# (x.y.z) gets @*release pinned. The corrected DESCRIPTION is committed and
+# pushed back onto the PR head branch, so the merged (and later tagged) tree
+# already carries the right pin. See docs/description-tagging-rethink.md.
+#
+# Wire this on `pull_request` from the caller. Pushing to the PR branch uses the
+# default GITHUB_TOKEN, so no GitHub App token is needed. Fork PRs are reported
+# but not pushed (the base repo's token cannot write a fork's branch).
+#
+# The dev version bump (push to main) lives in bump-dev-version.yaml; releasing
+# (tag + GitHub Release) in publish-release.yaml.
+name: sync-remotes.yaml
+
+on:
+  workflow_call:
+
+jobs:
+  sync-remotes:
+    concurrency: # prevent concurrent runs on the same PR
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout PR head branch
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Workflows repo (for helper scripts)
+        uses: actions/checkout@v6
+        with:
+          # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .workflows-repo
+          persist-credentials: false
+
+      - name: Sync Remotes to Version kind
+        id: sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          script=.workflows-repo/.github/scripts/manage_description.sh
+          # Classify the version, surfacing the helper's own diagnostics if it
+          # fails (e.g. an unparseable Version) instead of dying with a bare
+          # exit 1. detect-version's stderr is forwarded for that reason.
+          if ! detected="$("$script" detect-version DESCRIPTION)"; then
+            echo "::error title=Version classification failed::manage_description.sh detect-version could not classify DESCRIPTION" >&2
+            exit 1
+          fi
+          # Parse only IS_DEV_VERSION as literal text — never eval output derived
+          # from the PR-authored DESCRIPTION (its Version field is attacker-controlled).
+          is_dev="$(printf '%s\n' "$detected" | awk -F= '$1=="IS_DEV_VERSION"{print $2}')"
+          case "$is_dev" in
+            true|false) ;;
+            *) echo "::error title=Invalid IS_DEV_VERSION::Expected true/false, got '$is_dev'" >&2; exit 1 ;;
+          esac
+          if [ "$is_dev" = "true" ]; then
+            echo "VERSION_KIND=dev" >> "$GITHUB_OUTPUT"
+            "$script" unpin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION_KIND=release" >> "$GITHUB_OUTPUT"
+            "$script" pin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit synced DESCRIPTION to PR branch
+        id: auto-commit
+        # git-auto-commit-action cannot push to a fork's branch from the base
+        # repo's workflow. Skip the push for cross-repo PRs (the released-deps
+        # gate still pins ephemerally, so the PR is not left unchecked).
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: '🤖 Sync Remotes for ${{ steps.sync.outputs.VERSION_KIND }} version. [skip actions]'
+          file_pattern: 'DESCRIPTION'
+
+      # Report only when Remotes were actually changed and the fix was pushed.
+      # When already in sync (or no Remotes field, or a fork we can't push to),
+      # nothing was done, so emit nothing.
+      - name: Report sync
+        if: steps.auto-commit.outputs.changes_detected == 'true'
+        shell: bash
+        env:
+          VERSION_KIND: ${{ steps.sync.outputs.VERSION_KIND }}
+          REMOTES_ACTION: ${{ steps.sync.outputs.REMOTES_ACTION }}
+          REMOTES_AFTER_B64: ${{ steps.sync.outputs.REMOTES_AFTER_B64 }}
+          COMMIT_HASH: ${{ steps.auto-commit.outputs.commit_hash }}
+          REPO: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          short_sha="${COMMIT_HASH:0:7}"
+          commit_url="${SERVER_URL}/${REPO}/commit/${COMMIT_HASH}"
+          case "$REMOTES_ACTION" in
+            added)    action="Pinned Remotes to \`@*release\` (release version)" ;;
+            stripped) action="Stripped \`@*release\` from Remotes (dev version)" ;;
+            *)        action="Updated Remotes" ;;
+          esac
+          echo "::notice title=Remotes synced::${action}; pushed ${short_sha}"
+          {
+            echo "## Sync Remotes"
+            echo ""
+            echo "${action}, pushed to the PR branch."
+            echo ""
+            echo "- **Commit:** [\`${short_sha}\`](${commit_url})"
+            echo ""
+            echo "<details><summary>Remotes after</summary>"
+            echo ""
+            echo '```'
+            echo "$REMOTES_AFTER_B64" | base64 -d
+            echo ""
+            echo '```'
+            echo ""
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,153 @@
+---
+# Reusable workflow that opens a release pull request, the way a maintainer does
+# it locally with usethis::use_version(). On the current default branch it:
+#   1. runs usethis::use_version(<which>)  (bumps the Version to the release
+#      number and renames the NEWS.md `(development version)` heading to it)
+#   2. pins Remotes to @*release   (OSP-specific; reuses manage_description.sh)
+# then opens a PR with those changes.
+#
+# `which` is one of major / minor / patch (usethis computes the release number
+# from the current dev version). Mirrors the manual "Publishing the release":
+# https://dev.open-systems-pharmacology.org/r-development-resources/collaboration_guide#publishing-the-release
+#
+# The resulting PR is validated by the caller's normal pull_request pipeline
+# (R-CMD-check etc.) before it is merged. Tagging + the GitHub Release are a
+# separate step (publish-release.yaml), wired and triggered by the caller.
+name: release-pr.yaml
+
+on:
+  workflow_call:
+    inputs:
+      which:
+        description: 'Which component to bump for the release: major, minor, or patch.'
+        type: string
+        required: true
+      app-id:
+        description: 'GitHub App ID for a token that can open PRs (else GITHUB_TOKEN).'
+        type: string
+        required: false
+        default: ''
+    secrets:
+      private-key:
+        description: 'Private key (PEM) for the GitHub App referenced by `app-id`.'
+        required: false
+
+jobs:
+  release-pr:
+    runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Validate which input
+        shell: bash
+        env:
+          WHICH: ${{ inputs.which }}
+        run: |
+          set -euo pipefail
+          case "$WHICH" in
+            major|minor|patch) ;;
+            *) echo "::error title=Invalid which::'$WHICH' must be major, minor, or patch." >&2; exit 1 ;;
+          esac
+
+      - name: Generate GitHub App token
+        id: app-token
+        if: inputs.app-id != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout caller repo
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Workflows repo (for helper scripts)
+        uses: actions/checkout@v6
+        with:
+          # Pull the helper script from the same repo+commit this reusable
+          # workflow was loaded from (job.workflow_*), so its CLI always matches
+          # this workflow body regardless of the caller's ref or fork.
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .workflows-repo
+          persist-credentials: false
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install usethis
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::usethis
+            any::desc
+
+      - name: Set release version (usethis)
+        id: ver
+        shell: Rscript {0}
+        env:
+          WHICH: ${{ inputs.which }}
+        run: |
+          options(usethis.quiet = TRUE)
+          # Rscript is non-interactive, so use_version() won't prompt.
+          usethis::use_version(Sys.getenv("WHICH"))
+          ver <- as.character(desc::desc_get_version("DESCRIPTION"))
+          cat(sprintf("VERSION=%s\n", ver), file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
+
+      - name: Pin Remotes to released versions
+        shell: bash
+        run: .workflows-repo/.github/scripts/manage_description.sh pin-remotes DESCRIPTION >/dev/null
+
+      - name: Open release PR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Stage only the package metadata we changed (never the .workflows-repo
+          # helper checkout, which would otherwise be added as a gitlink).
+          git add DESCRIPTION NEWS.md
+          if git diff --cached --quiet; then
+            # Tree already at the release version: nothing to open (silent no-op).
+            exit 0
+          fi
+
+          branch="release-pr-${VERSION}"
+          base="$(git rev-parse --abbrev-ref HEAD)"
+          git checkout -B "$branch"
+          git commit -m "Release ${VERSION}"
+          git push --force origin "$branch"
+
+          # Only an OPEN PR counts as existing; a closed/merged PR on the same
+          # branch must not block creating a new one.
+          if [ -n "$(gh pr list --state open --head "$branch" --json number --jq '.[0].number' 2>/dev/null)" ]; then
+            verb="Updated"
+          else
+            gh pr create \
+              --base "$base" \
+              --head "$branch" \
+              --title "Release ${VERSION}" \
+              --body "Prepares release \`${VERSION}\` via \`usethis::use_version()\`.
+
+          - \`Version\` set to \`${VERSION}\`
+          - \`NEWS.md\` development heading renamed to \`${VERSION}\`
+          - \`Remotes\` pinned to \`@*release\`"
+            verb="Opened"
+          fi
+          pr_url="$(gh pr view "$branch" --json url --jq .url 2>/dev/null)"
+          echo "::notice title=Release PR::${verb} release PR for ${VERSION} (${pr_url})"
+          {
+            echo "## Release PR"
+            echo ""
+            echo "${verb} a release PR for \`${VERSION}\`: ${pr_url}"
+          } >> "$GITHUB_STEP_SUMMARY"
