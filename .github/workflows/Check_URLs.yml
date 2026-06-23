@@ -1,9 +1,9 @@
 ---
-name: Check URLs 
+name: Check URLs
 
 on:
     workflow_call:
-  
+
 concurrency:
   group: links-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -15,11 +15,12 @@ jobs:
 
     steps:
       - name: Checkout project
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
+          persist-credentials: false
 
-      - name: Check URLs 
+      - name: Check URLs
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-

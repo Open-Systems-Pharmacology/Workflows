@@ -27,14 +27,14 @@ jobs:
       contents: write
     steps:
       - name: Checkout PR head branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout Workflows repo (for helper scripts)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
           repository: ${{ job.workflow_repository }}
