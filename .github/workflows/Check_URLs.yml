@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
+          persist-credentials: false
 
       - name: Check URLs
         uses: lycheeverse/lychee-action@v2

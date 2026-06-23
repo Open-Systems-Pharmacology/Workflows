@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - name: Extract and download schema
         run: |
           sudo apt-get remove -y needrestart
@@ -33,6 +34,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - name: Download schema from the latest released tag  # https://github.com/marketplace/actions/release-downloader
         uses: robinraju/release-downloader@v1.9
         with:
