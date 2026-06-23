@@ -1,6 +1,6 @@
 name: Spellcheck
 
-on: 
+on:
   workflow_call:
 
 permissions:
@@ -10,7 +10,7 @@ jobs:
   Spellcheck:
     runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v7
       with:
         ref: ${{ github.event.pull_request.head.sha }}
     - run: |

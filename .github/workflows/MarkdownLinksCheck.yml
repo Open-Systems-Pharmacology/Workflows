@@ -1,6 +1,6 @@
 name: Check Markdown links
 
-on: 
+on:
   workflow_call:
     inputs:
       folder-path:
@@ -10,12 +10,12 @@ on:
 
 permissions:
   contents: read
-  
+
 jobs:
   markdown-link-check:
     runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v7
       with:
         ref: ${{ github.event.pull_request.head.sha }}
     - run: |

@@ -1,6 +1,6 @@
 name: Check if all files with given extensions are saved as UTF-8
 
-on: 
+on:
   workflow_call:
     inputs:
       file-extensions:
@@ -16,7 +16,7 @@ jobs:
   utf8check:
     runs-on: ${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v7
       with:
         ref: ${{ github.event.pull_request.head.sha }}
     - name: check utf-8

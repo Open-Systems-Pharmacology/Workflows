@@ -46,12 +46,12 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout caller repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
       - name: Checkout Workflows repo (for helper scripts)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
           repository: ${{ job.workflow_repository }}

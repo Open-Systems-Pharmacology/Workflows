@@ -35,14 +35,14 @@ jobs:
       actions: read     # download-artifact reads the run's artifacts
     steps:
       - name: Checkout caller repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Full history so existing tags are present for the force-update.
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout Workflows repo (for helper scripts)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
           repository: ${{ job.workflow_repository }}
@@ -91,7 +91,7 @@ jobs:
         id: assets
         if: steps.detect.outputs.is-release == 'true'
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           # Only this version's artifacts; flatten every OS's package file into
           # one directory so they can be attached together.

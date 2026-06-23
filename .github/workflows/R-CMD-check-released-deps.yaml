@@ -34,12 +34,12 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 
       - name: Checkout Workflows repo (for helper scripts)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Helper script from this workflow's own repo+commit (see comment in release-pr.yaml).
           repository: ${{ job.workflow_repository }}

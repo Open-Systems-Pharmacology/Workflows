@@ -61,12 +61,12 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout caller repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
       - name: Checkout Workflows repo (for helper scripts)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Pull the helper script from the same repo+commit this reusable
           # workflow was loaded from (job.workflow_*), so its CLI always matches
