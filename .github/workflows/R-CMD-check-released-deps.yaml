@@ -35,6 +35,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
 
       - name: Checkout Workflows repo (for helper scripts)
         uses: actions/checkout@v6
@@ -59,6 +61,8 @@ jobs:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'
           ignore-renv: 'true'
+          extra-packages: |
+            rcmdcheck
 
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
