@@ -22,14 +22,19 @@ on:
         description: 'Which component to bump for the release: major, minor, or patch.'
         type: string
         required: true
+      client-id:
+        description: 'GitHub App client ID for a token that can open PRs (else GITHUB_TOKEN).'
+        type: string
+        required: false
+        default: ''
       app-id:
-        description: 'GitHub App ID for a token that can open PRs (else GITHUB_TOKEN).'
+        description: 'Deprecated. Use client-id instead.'
         type: string
         required: false
         default: ''
     secrets:
       private-key:
-        description: 'Private key (PEM) for the GitHub App referenced by `app-id`.'
+        description: 'Private key (PEM) for the GitHub App referenced by `client-id`.'
         required: false
 
 jobs:
@@ -52,10 +57,10 @@ jobs:
 
       - name: Generate GitHub App token
         id: app-token
-        if: inputs.app-id != ''
+        if: inputs.client-id != '' || inputs.app-id != ''
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ inputs.app-id }}
+          client-id: ${{ inputs.client-id || inputs.app-id }}
           private-key: ${{ secrets.private-key }}
           permission-contents: write
           permission-pull-requests: write
@@ -101,14 +106,16 @@ jobs:
           cat(sprintf("VERSION=%s\n", ver), file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
 
       - name: Pin Remotes to released versions
+        id: pin
         shell: bash
-        run: .workflows-repo/.github/scripts/manage_description.sh pin-remotes DESCRIPTION >/dev/null
+        run: .workflows-repo/.github/scripts/manage_description.sh pin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
 
       - name: Open release PR
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.ver.outputs.VERSION }}
+          REMOTES_ACTION: ${{ steps.pin.outputs.REMOTES_ACTION }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -128,6 +135,11 @@ jobs:
           git commit -m "Release ${VERSION}"
           git push --force origin "$branch"
 
+          remotes_bullet=""
+          if [ "$REMOTES_ACTION" = "added" ]; then
+            remotes_bullet=$'\n- `Remotes` pinned to `@*release`'
+          fi
+
           # Only an OPEN PR counts as existing; a closed/merged PR on the same
           # branch must not block creating a new one.
           if [ -n "$(gh pr list --state open --head "$branch" --json number --jq '.[0].number' 2>/dev/null)" ]; then
@@ -140,8 +152,7 @@ jobs:
               --body "Prepares release \`${VERSION}\` via \`usethis::use_version()\`.
 
           - \`Version\` set to \`${VERSION}\`
-          - \`NEWS.md\` development heading renamed to \`${VERSION}\`
-          - \`Remotes\` pinned to \`@*release\`"
+          - \`NEWS.md\` development heading renamed to \`${VERSION}\`${remotes_bullet}"
             verb="Opened"
           fi
           pr_url="$(gh pr view "$branch" --json url --jq .url 2>/dev/null)"
