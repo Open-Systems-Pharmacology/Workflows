@@ -133,9 +133,7 @@ jobs:
               --body "Restores development mode via \`usethis::use_dev_version()\`.
 
           - \`Version\` bumped to \`${DEV_VERSION}\`
-          - \`NEWS.md\` development-version heading added${remotes_bullet}
-
-          Opened automatically after a release (or via manual dispatch)."
+          - \`NEWS.md\` development-version heading added${remotes_bullet}"
             verb="Opened"
           fi
           pr_url="$(gh pr view "$branch" --json url --jq .url 2>/dev/null)"
