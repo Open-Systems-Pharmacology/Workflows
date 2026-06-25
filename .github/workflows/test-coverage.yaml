@@ -39,7 +39,10 @@ jobs:
         with:
           ignore-renv: ${{ inputs.ignore-renv }}
           dotnet-version: ${{ inputs.dotnet-version }}
-          extra-packages: covr
+          extra-packages: |
+            covr
+            local::.
+            xml2
 
       - name: Test coverage
         run: |
@@ -53,7 +56,7 @@ jobs:
 
       - uses: codecov/codecov-action@v5
         with:
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' && true || false }}
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' }}
           files: ./cobertura.xml
           plugins: noop
           disable_search: true
