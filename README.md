@@ -39,22 +39,29 @@ Configure these in the consuming repository (Settings → Secrets and variables 
 | --- | --- | --- | --- |
 | Secret | `CODECOV_TOKEN` | `test-coverage` | Codecov upload token. Needed only if you keep the `test-coverage` job. |
 
-##### GitHub App credentials (only if your default branch is protected)
+##### GitHub App credentials (optional, see when they are needed)
 
-`bump-dev-version`, `release-pr`, and `dev-pr` write to the repository: `bump-dev-version` pushes a commit directly to the default branch, and `release-pr` / `dev-pr` push a branch and open a PR. They do this with the built-in `GITHUB_TOKEN` by default, which is sufficient on an unprotected default branch. **You only need a GitHub App when the default branch is protected by a ruleset that `GITHUB_TOKEN` cannot bypass**: the App's identity goes in the ruleset's bypass list so these workflows can push past it.
+`bump-dev-version`, `release-pr`, and `dev-pr` all default to the built-in `GITHUB_TOKEN`, so the simplest setup needs no App at all. A GitHub App is worth adding for two reasons, each affecting different workflows:
 
-If, and only if, that applies, provision a GitHub App and add:
+1. **Pushing to a protected default branch (`bump-dev-version`).** This workflow pushes the dev-version bump commit *directly* to the default branch. If that branch is protected by a ruleset, a commit pushed with `GITHUB_TOKEN` is rejected. A token minted from an App that the ruleset allows to bypass is not, so the App is required here only when the default branch is protected.
+2. **Letting the opened PR trigger CI (`release-pr`, `dev-pr`).** These push a feature branch and open a PR, both of which `GITHUB_TOKEN` *can* do. The catch is that GitHub does not run workflows in response to events caused by `GITHUB_TOKEN` (a deliberate loop guard), so a PR opened with it sits there with no `pull-request.yaml` run. Opening the PR with an App token makes it trigger the normal PR pipeline, so the release/dev candidate is actually validated before merge.
+
+To use an App, provision it and wire the credentials:
+
+1. Create (or reuse) a GitHub App, install it on the repository, and grant it `contents: write` and `pull-requests: write`.
+2. **Only for the protected-branch case above:** add the App to the default branch ruleset's bypass list (Settings → Rules → Rulesets → your default-branch ruleset → Bypass list). Without this, its token is still rejected by the protection.
+3. Add its credentials:
 
 | Kind | Name | Purpose |
 | --- | --- | --- |
-| Variable | `APP_CLIENT_ID` | Client ID (or App ID) of the GitHub App in the ruleset's bypass list. |
+| Variable | `APP_CLIENT_ID` | Client ID (or App ID) of that App. |
 | Secret | `APP_PRIVATE_KEY` | Private key (PEM) of that App. |
 
 `APP_CLIENT_ID` and `APP_PRIVATE_KEY` are placeholders. Name them whatever you like and reference those names in the `with:` / `secrets:` blocks of the templates below. Leave the `client-id` / `private-key` inputs unset (omit them from the caller) to fall back to `GITHUB_TOKEN`.
 
 > The release/dev/bump workflows accept the App identity via the `client-id` input. The older `app-id` input still works (it is accepted as a deprecated alias), but new callers should pass `client-id`.
 
-Each caller is a thin file. Click to expand the one you need and copy it into `.github/workflows/`. In the `merge-to-main`, `release-pr`, and `dev-pr` templates, the `client-id:` / `private-key:` lines are only required for a protected default branch; drop them to use `GITHUB_TOKEN` (see the App-credentials note above).
+Each caller is a thin file. Click to expand the one you need and copy it into `.github/workflows/`. In the `merge-to-main`, `release-pr`, and `dev-pr` templates, the `client-id:` / `private-key:` lines drive the App token; drop them to fall back to `GITHUB_TOKEN` (see the App-credentials note above for the trade-offs).
 
 <details>
 <summary><code>pull-request.yaml</code>: runs on every PR</summary>
