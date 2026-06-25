@@ -33,19 +33,28 @@ Add the caller workflows below under `.github/workflows/` in your package reposi
 
 #### Prerequisites
 
-Configure these in the consuming repository (Settings → Secrets and variables → Actions):
+Configure these in the consuming repository (Settings → Secrets and variables → Actions). Only `CODECOV_TOKEN` is needed in the common case; the GitHub App credentials are conditional (see below).
 
 | Kind | Name | Used by | Purpose |
 | --- | --- | --- | --- |
-| Variable | `APP_CLIENT_ID` | `bump-dev-version`, `release-pr`, `dev-pr` | Client ID (or App ID) of a GitHub App whose identity is in the default branch ruleset's bypass list, so it can push to and open PRs against a protected branch. |
-| Secret | `APP_PRIVATE_KEY` | `bump-dev-version`, `release-pr`, `dev-pr` | Private key (PEM) of that GitHub App. |
-| Secret | `CODECOV_TOKEN` | `test-coverage` | Codecov upload token. |
+| Secret | `CODECOV_TOKEN` | `test-coverage` | Codecov upload token. Needed only if you keep the `test-coverage` job. |
 
-`APP_CLIENT_ID` and `APP_PRIVATE_KEY` are placeholders. Name them whatever you like in your repository and reference those names in the `with:` / `secrets:` blocks of the templates below.
+##### GitHub App credentials (only if your default branch is protected)
+
+`bump-dev-version`, `release-pr`, and `dev-pr` write to the repository: `bump-dev-version` pushes a commit directly to the default branch, and `release-pr` / `dev-pr` push a branch and open a PR. They do this with the built-in `GITHUB_TOKEN` by default, which is sufficient on an unprotected default branch. **You only need a GitHub App when the default branch is protected by a ruleset that `GITHUB_TOKEN` cannot bypass**: the App's identity goes in the ruleset's bypass list so these workflows can push past it.
+
+If, and only if, that applies, provision a GitHub App and add:
+
+| Kind | Name | Purpose |
+| --- | --- | --- |
+| Variable | `APP_CLIENT_ID` | Client ID (or App ID) of the GitHub App in the ruleset's bypass list. |
+| Secret | `APP_PRIVATE_KEY` | Private key (PEM) of that App. |
+
+`APP_CLIENT_ID` and `APP_PRIVATE_KEY` are placeholders. Name them whatever you like and reference those names in the `with:` / `secrets:` blocks of the templates below. Leave the `client-id` / `private-key` inputs unset (omit them from the caller) to fall back to `GITHUB_TOKEN`.
 
 > The release/dev/bump workflows accept the App identity via the `client-id` input. The older `app-id` input still works (it is accepted as a deprecated alias), but new callers should pass `client-id`.
 
-Each caller is a thin file. Click to expand the one you need and copy it into `.github/workflows/`.
+Each caller is a thin file. Click to expand the one you need and copy it into `.github/workflows/`. In the `merge-to-main`, `release-pr`, and `dev-pr` templates, the `client-id:` / `private-key:` lines are only required for a protected default branch; drop them to use `GITHUB_TOKEN` (see the App-credentials note above).
 
 <details>
 <summary><code>pull-request.yaml</code>: runs on every PR</summary>
