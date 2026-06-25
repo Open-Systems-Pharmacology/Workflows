@@ -4,10 +4,10 @@ Reusable workflows (e.g. GitHub Actions) which can be used in any OSP repository
 
 See https://docs.github.com/en/actions/using-workflows/reusing-workflows for details on how reusable workflows are called.
 
-This repository hosts workflows for several purposes (content checks, spell checking, link checking, CodeQL, qualification plans, and more). The section below documents one cohesive subsystem: the CI and release pipeline for R packages.
+This repository hosts workflows for several purposes (content checks, spell checking, link checking, CodeQL, qualification plans, and more).
 
 
-## R package CI & release pipeline
+## OSP R package CI
 
 This is a suggested, complete GitHub Actions setup for an OSP R package: a reference wiring of focused, event-specific reusable workflows that together cover the full lifecycle of the package, from validating pull requests, to advancing the development version on merge, to preparing and publishing releases. Adopt it wholesale, or take the pieces you need; a consuming repository wires a handful of thin caller workflows that delegate to the reusable ones below rather than maintaining its own CI logic.
 
