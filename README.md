@@ -299,12 +299,11 @@ jobs:
     uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-released-deps.yaml@main
 ```
 
-
-
 </details>
 
 <details>
 <summary><code>check-dev-deps.yaml</code></summary>
+
 ```yaml
 name: Check against development dependencies
 
@@ -319,4 +318,5 @@ jobs:
   check-dev-deps:
     uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
 ```
+
 </details>
