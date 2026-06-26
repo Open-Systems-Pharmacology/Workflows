@@ -111,7 +111,6 @@ classify_version() {
       final_version="${base}.${dev}"
       echo "Dev version detected. Bumping: $version -> $final_version" >&2
       sed -i.bak "s/^Version:.*/Version: $final_version/" "$description" && rm -f "${description}.bak"
-      echo "::notice title=Version bumped::Dev version $version -> $final_version" >&2
     else
       final_version="$version"
       echo "Dev version detected." >&2
@@ -120,7 +119,9 @@ classify_version() {
     is_dev=false
     final_version="$version"
     echo "Release version detected, no version bump needed." >&2
-    echo "::notice title=Release version::Detected release version $version, no bump performed" >&2
+    if [ "$do_bump" = bump ]; then
+      echo "::notice title=Release version::Detected release version $version, no bump performed" >&2
+    fi
   fi
 }
 

@@ -109,6 +109,8 @@ runs:
     - name: Install packages from renv.lock (Windows, cache miss)
       if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows' && steps.cache-renv-win.outputs.cache-hit != 'true'
       shell: Rscript {0}
+      env:
+        PKGCACHE_HTTP_VERSION: '1.1'
       run: |
         lib <- Sys.getenv("R_LIBS_USER")
         if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", lib = lib)
@@ -124,6 +126,7 @@ runs:
       shell: Rscript {0}
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+        PKGCACHE_HTTP_VERSION: '1.1'
       run: |
         lib <- .libPaths()[1]
         specs <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "\\s+")[[1]]

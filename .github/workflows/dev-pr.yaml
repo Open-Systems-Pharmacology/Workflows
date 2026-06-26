@@ -18,14 +18,19 @@ name: dev-pr.yaml
 on:
   workflow_call:
     inputs:
+      client-id:
+        description: 'GitHub App client ID for a token that can open PRs (else GITHUB_TOKEN).'
+        type: string
+        required: false
+        default: ''
       app-id:
-        description: 'GitHub App ID for a token that can open PRs (else GITHUB_TOKEN).'
+        description: 'Deprecated. Use client-id instead.'
         type: string
         required: false
         default: ''
     secrets:
       private-key:
-        description: 'Private key (PEM) for the GitHub App referenced by `app-id`.'
+        description: 'Private key (PEM) for the GitHub App referenced by `client-id`.'
         required: false
 
 jobs:
@@ -37,10 +42,10 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        if: inputs.app-id != ''
+        if: inputs.client-id != '' || inputs.app-id != ''
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ inputs.app-id }}
+          client-id: ${{ inputs.client-id || inputs.app-id }}
           private-key: ${{ secrets.private-key }}
           permission-contents: write
           permission-pull-requests: write
@@ -82,14 +87,16 @@ jobs:
           cat(sprintf("DEV_VERSION=%s\n", ver), file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
 
       - name: Unpin Remotes
+        id: unpin
         shell: bash
-        run: .workflows-repo/.github/scripts/manage_description.sh unpin-remotes DESCRIPTION >/dev/null
+        run: .workflows-repo/.github/scripts/manage_description.sh unpin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
 
       - name: Open restore-development PR
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           DEV_VERSION: ${{ steps.dev.outputs.DEV_VERSION }}
+          REMOTES_ACTION: ${{ steps.unpin.outputs.REMOTES_ACTION }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -106,8 +113,13 @@ jobs:
           branch="dev-pr-${DEV_VERSION}"
           base="$(git rev-parse --abbrev-ref HEAD)"
           git checkout -B "$branch"
-          git commit -m "Restore development mode (${DEV_VERSION})"
+          git commit -m "Restore development mode (${DEV_VERSION}) [skip ci]"
           git push --force origin "$branch"
+
+          remotes_bullet=""
+          if [ "$REMOTES_ACTION" = "stripped" ]; then
+            remotes_bullet=$'\n- `Remotes` unpinned (`@*release` stripped)'
+          fi
 
           # Only an OPEN PR counts as existing; `gh pr view` would also match a
           # closed/merged PR on the same branch and wrongly skip creation.
@@ -121,10 +133,7 @@ jobs:
               --body "Restores development mode via \`usethis::use_dev_version()\`.
 
           - \`Version\` bumped to \`${DEV_VERSION}\`
-          - \`NEWS.md\` development-version heading added
-          - \`Remotes\` unpinned (\`@*release\` stripped)
-
-          Opened automatically after a release (or via manual dispatch)."
+          - \`NEWS.md\` development-version heading added${remotes_bullet}"
             verb="Opened"
           fi
           pr_url="$(gh pr view "$branch" --json url --jq .url 2>/dev/null)"

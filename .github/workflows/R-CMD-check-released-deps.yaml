@@ -9,6 +9,16 @@ on:
           [{"os": "${{ vars.GHA_DEFAULT_RUNNER_WINDOWS || 'windows-latest' }}", "r": "release"},
           {"os": "${{ vars.GHA_DEFAULT_RUNNER_UBUNTU || 'ubuntu-latest' }}", "r": "release"},
           {"os": "${{ vars.GHA_DEFAULT_RUNNER_MACOS || 'macos-latest' }}", "r": "release"}]
+      setup-quarto:
+        description: 'Whether to install Quarto (needed for packages with Quarto vignettes).'
+        required: false
+        type: boolean
+        default: false
+      setup-tinytex:
+        description: 'Whether to install TinyTeX (provides pdflatex for PDF manual builds).'
+        required: false
+        type: boolean
+        default: false
 
 name: R-CMD-check-released-deps.yaml
 
@@ -60,6 +70,8 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'
+          setup-quarto: ${{ inputs.setup-quarto }}
+          setup-tinytex: ${{ inputs.setup-tinytex }}
           ignore-renv: 'true'
           extra-packages: |
             rcmdcheck

@@ -62,12 +62,9 @@ jobs:
         with:
           setup-pandoc: 'true'
           ignore-renv: ${{ inputs.ignore-renv }}
-          extra-packages: pkgdown
-
-      - name: Install Local package
-        id: install-local
-        run: pak::local_install(dependencies = FALSE)
-        shell: Rscript {0}
+          extra-packages: |
+            pkgdown
+            local::.
 
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
