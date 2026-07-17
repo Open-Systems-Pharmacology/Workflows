@@ -1,0 +1,55 @@
+# Verification workflow for the setup-dotnet-runtime action.
+#
+# Proves that the action installs the net8 runtime and does NOT drag in the
+# .NET 10 runtime (the segfault cause) on any runner, Windows included. It
+# exercises the action via its local path so a PR tests its own changes. Runs
+# on demand; safe to remove once the fix has been observed green.
+name: Verify .NET provisioning
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/actions/setup-dotnet-runtime/action.yml'
+      - '.github/workflows/verify-dotnet-provisioning.yaml'
+
+permissions: read-all
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET runtime
+        uses: ./.github/actions/setup-dotnet-runtime
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Show DOTNET_ROOT and installed runtimes
+        shell: bash
+        run: |
+          echo "DOTNET_ROOT=${DOTNET_ROOT:-<unset>}"
+          echo "DOTNET_ROLL_FORWARD=${DOTNET_ROLL_FORWARD:-<unset>}"
+          echo "--- dotnet --list-runtimes ---"
+          dotnet --list-runtimes
+
+      - name: Assert net8 present and net10 absent
+        shell: bash
+        run: |
+          runtimes="$(dotnet --list-runtimes)"
+          if echo "$runtimes" | grep -q 'Microsoft.NETCore.App 10\.'; then
+            echo "::error::Microsoft.NETCore.App 10.x is present; the net10 runtime should not be installed."
+            exit 1
+          fi
+          if ! echo "$runtimes" | grep -q 'Microsoft.NETCore.App 8\.'; then
+            echo "::error::Microsoft.NETCore.App 8.x is missing; the net8 runtime must be installed."
+            exit 1
+          fi
+          echo "OK: net8 runtime present, no net10 runtime."

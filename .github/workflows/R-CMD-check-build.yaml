@@ -42,7 +42,7 @@ on:
         type: string
         default: ''
       dotnet-version:
-        description: '.NET SDK version to install on all runners (forwarded to setup-r-env). Set to an empty string to skip setup-dotnet and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
+        description: '.NET runtime version to install on all runners (forwarded to setup-r-env; a channel like "8.0.x"/"10.0.x", a bare major like "8"/"10", or an exact version). Set to an empty string to skip .NET setup and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
         required: false
         type: string
         default: '8.0.x'

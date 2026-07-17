@@ -1,0 +1,92 @@
+name: 'Setup .NET runtime'
+description: >-
+  Installs a pinned .NET shared runtime (not the SDK) via Microsoft's
+  dotnet-install script and pins roll-forward, so a net8-targeted process
+  (e.g. rSharp) runs on the runtime it was built for and never rolls forward
+  to a higher major such as .NET 10.
+
+inputs:
+  dotnet-version:
+    description: >-
+      .NET runtime version to install. Accepts a channel ("8.0.x", "10.0.x",
+      "8.0"), a bare major ("8", "10"), or an exact runtime version ("8.0.18").
+      Set to an empty string to skip installation entirely and use whatever the
+      runner image ships with (which may be no .NET at all, e.g. on macOS).
+    required: false
+    default: '8.0.x'
+
+runs:
+  using: composite
+  steps:
+    # Why not actions/setup-dotnet@v5: it unconditionally runs the install
+    # script with `-Runtime dotnet -Channel LTS` (LTS == .NET 10 from late
+    # 2025) before installing the requested version, dropping the .NET 10
+    # shared runtime and its host into DOTNET_ROOT alongside the requested one.
+    # rSharp ships net8-targeted assemblies; on Windows the shared muxer then
+    # resolves the newest hostfxr (net10's), so those assemblies run through a
+    # net10 host and segfault (0xC0000005 / exit code -1073741819) the moment a
+    # test calls into .NET.
+    #
+    # dotnet-install does a single install pinned to the requested channel with
+    # no hardcoded LTS step, so .NET 10 never lands unless a caller asks for it.
+    # DOTNET_ROLL_FORWARD=Disable is belt-and-braces: a net8 app then refuses to
+    # bind to any other major even if one is somehow present. The channel is
+    # derived from dotnet-version, so `10.0.x` still provisions net10 unchanged.
+    #
+    # Runtime-only (--runtime dotnet) is sufficient for R package checks: rSharp
+    # ships prebuilt assemblies, so the check step only ever runs .NET, never
+    # builds it. dotnet-install does not touch DOTNET_ROOT/PATH, so we set both.
+    - name: Install .NET runtime (Unix)
+      if: inputs.dotnet-version != '' && runner.os != 'Windows'
+      shell: bash
+      env:
+        DOTNET_VERSION: ${{ inputs.dotnet-version }}
+      run: |
+        set -euo pipefail
+        install_dir="${RUNNER_TEMP}/dotnet"
+        args=(--runtime dotnet --install-dir "${install_dir}" --no-path)
+        # Map the input to a dotnet-install argument:
+        #   "8.0.18" (exact X.Y.Z)     -> --version 8.0.18 (that exact build)
+        #   "8" / "10" (bare major)    -> --channel 8.0 / 10.0
+        #   "8.0.x" / "8.0" (channel)  -> --channel 8.0 (latest patch)
+        # dotnet-install channels are A.B form, so a bare major gains ".0".
+        if [[ "${DOTNET_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          args+=(--version "${DOTNET_VERSION}")
+        elif [[ "${DOTNET_VERSION}" =~ ^[0-9]+$ ]]; then
+          args+=(--channel "${DOTNET_VERSION}.0")
+        else
+          args+=(--channel "${DOTNET_VERSION%.x}")
+        fi
+        curl -fsSL https://dot.net/v1/dotnet-install.sh -o "${RUNNER_TEMP}/dotnet-install.sh"
+        bash "${RUNNER_TEMP}/dotnet-install.sh" "${args[@]}"
+        echo "DOTNET_ROOT=${install_dir}" >> "${GITHUB_ENV}"
+        echo "DOTNET_ROLL_FORWARD=Disable" >> "${GITHUB_ENV}"
+        echo "${install_dir}" >> "${GITHUB_PATH}"
+
+    - name: Install .NET runtime (Windows)
+      if: inputs.dotnet-version != '' && runner.os == 'Windows'
+      shell: pwsh
+      env:
+        DOTNET_VERSION: ${{ inputs.dotnet-version }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $installDir = Join-Path $env:RUNNER_TEMP 'dotnet'
+        $params = @{ Runtime = 'dotnet'; InstallDir = $installDir; NoPath = $true }
+        # Map the input to a dotnet-install argument:
+        #   "8.0.18" (exact X.Y.Z)     -> -Version 8.0.18 (that exact build)
+        #   "8" / "10" (bare major)    -> -Channel 8.0 / 10.0
+        #   "8.0.x" / "8.0" (channel)  -> -Channel 8.0 (latest patch)
+        # dotnet-install channels are A.B form, so a bare major gains ".0".
+        if ($env:DOTNET_VERSION -match '^[0-9]+\.[0-9]+\.[0-9]+$') {
+          $params['Version'] = $env:DOTNET_VERSION
+        } elseif ($env:DOTNET_VERSION -match '^[0-9]+$') {
+          $params['Channel'] = "$($env:DOTNET_VERSION).0"
+        } else {
+          $params['Channel'] = ($env:DOTNET_VERSION -replace '\.x$', '')
+        }
+        $script = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
+        Invoke-WebRequest -Uri 'https://dot.net/v1/dotnet-install.ps1' -OutFile $script
+        & $script @params
+        "DOTNET_ROOT=$installDir"     | Out-File -FilePath $env:GITHUB_ENV  -Append
+        "DOTNET_ROLL_FORWARD=Disable" | Out-File -FilePath $env:GITHUB_ENV  -Append
+        $installDir                   | Out-File -FilePath $env:GITHUB_PATH -Append

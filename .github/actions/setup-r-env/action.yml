@@ -23,7 +23,15 @@ inputs:
     required: false
     default: 'false'
   dotnet-version:
-    description: '.NET SDK version to install on all runners (e.g. "8.0.x", "10.0.x"). Set to an empty string to skip the setup-dotnet step and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
+    description: >-
+      .NET runtime version to install on all runners. Accepts a channel
+      ("8.0.x", "10.0.x", "8.0"), a bare major ("8", "10"), or an exact runtime
+      version ("8.0.18"). The runtime (not the SDK) is installed via
+      Microsoft''s dotnet-install script
+      and pinned with DOTNET_ROLL_FORWARD=Disable, so a net8-targeted process
+      (e.g. rSharp) never rolls forward to a higher major. Set to an empty
+      string to skip .NET setup entirely and use whatever the runner image ships
+      with (which may be no .NET at all, e.g. on macOS).
     required: false
     default: '8.0.x'
   ignore-renv:
@@ -52,9 +60,12 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Setup .NET
+    # Install the pinned .NET runtime (not the SDK) so a net8-targeted process
+    # such as rSharp runs on the runtime it was built for. See the
+    # setup-dotnet-runtime action for why actions/setup-dotnet is not used.
+    - name: Setup .NET runtime
       if: inputs.dotnet-version != ''
-      uses: actions/setup-dotnet@v5
+      uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-dotnet-runtime@main
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
 
