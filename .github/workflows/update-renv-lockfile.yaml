@@ -91,12 +91,39 @@ jobs:
           extra-packages: |
             rcmdcheck
 
+      # OSP R packages intermittently crash with an access violation (0xC0000005) on
+      # Windows runners (Open-Systems-Pharmacology/OSPSuite-R#1996). Register a
+      # machine-wide Windows Error Reporting LocalDumps key so any process that
+      # crashes during the check writes a full dump, uploaded below on failure.
+      - name: Enable Windows crash dump capture
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dumpDir = Join-Path $env:RUNNER_TEMP 'crashdumps'
+          New-Item -ItemType Directory -Force -Path $dumpDir | Out-Null
+          $wer = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting'
+          New-Item -Path "$wer\LocalDumps" -Force | Out-Null
+          Set-ItemProperty -Path "$wer\LocalDumps" -Name DumpFolder -Value $dumpDir -Type ExpandString
+          Set-ItemProperty -Path "$wer\LocalDumps" -Name DumpType -Value 2 -Type DWord # full dump
+          Set-ItemProperty -Path "$wer\LocalDumps" -Name DumpCount -Value 5 -Type DWord
+          Set-ItemProperty -Path $wer -Name DontShowUI -Value 1 -Type DWord # never block on a WER dialog
+          "CRASH_DUMP_DIR=$dumpDir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Check R package
         uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--no-manual", "--no-vignettes")'
           build_args: 'c("--no-manual", "--no-build-vignettes")'
           error-on: 'c("error")'
+
+      - name: Upload crash dumps
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: crash-dumps-${{ matrix.os }}
+          path: ${{ env.CRASH_DUMP_DIR }}/*.dmp
+          if-no-files-found: ignore
+          retention-days: 7
 
   commit-renv-lock:
     needs: [update-renv-lock, test-on-platforms]
