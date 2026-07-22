@@ -279,6 +279,16 @@ flowchart TD
 
 These two scheduled checks are specific to packages that resolve some dependencies from GitHub via `Remotes:` in DESCRIPTION (typically OSP packages that depend on other OSP packages not published on CRAN). A package whose dependencies all come from CRAN has nothing to gain here and should skip this section.
 
+Resolving those OSP dependencies from GitHub `Remotes:` forces a from-source build of each one. If the dependencies are published on an R-universe (for example `https://open-systems-pharmacology.r-universe.dev`), you can instead have CI pull the prebuilt binaries by adding that repository to `getOption("repos")`. Every reusable check exposes an `extra-repositories` input for this (forwarded to `r-lib/actions/setup-r`); `pak` then resolves the dependency from the R-universe binaries rather than compiling the `Remotes` from source. The value accepts a comma- or space-separated string, or a YAML block list with one URL per line:
+
+```yaml
+jobs:
+  R-CMD-Check:
+    uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
+    with:
+      extra-repositories: 'https://open-systems-pharmacology.r-universe.dev'
+```
+
 The pair catches drift in both directions: `check-dev-deps` checks against the current development dependencies (the unpinned Remotes as they stand in DESCRIPTION), while `check-released-deps` pins Remotes to `@*release` and checks against the latest released ones. Running both nightly surfaces a break early, whether it comes from an upstream development change or from a not-yet-released upstream fix the package has started relying on.
 
 <details>

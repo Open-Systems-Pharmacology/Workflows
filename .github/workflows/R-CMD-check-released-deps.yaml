@@ -19,6 +19,11 @@ on:
         required: false
         type: boolean
         default: false
+      extra-repositories:
+        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev, so pak can resolve dependencies from prebuilt binaries). Comma/space-separated, or one URL per line. Forwarded to setup-r-env.'
+        required: false
+        type: string
+        default: ''
 
 name: R-CMD-check-released-deps.yaml
 
@@ -73,6 +78,7 @@ jobs:
           setup-quarto: ${{ inputs.setup-quarto }}
           setup-tinytex: ${{ inputs.setup-tinytex }}
           ignore-renv: 'true'
+          extra-repositories: ${{ inputs.extra-repositories }}
           extra-packages: |
             rcmdcheck
 

@@ -41,6 +41,11 @@ on:
         required: false
         type: string
         default: ''
+      extra-repositories:
+        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev, so pak can resolve dependencies from prebuilt binaries). Comma/space-separated, or one URL per line. Forwarded to setup-r-env.'
+        required: false
+        type: string
+        default: ''
       dotnet-version:
         description: '.NET SDK version to install on all runners (forwarded to setup-r-env). Set to an empty string to skip setup-dotnet and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
         required: false
@@ -80,6 +85,7 @@ jobs:
           setup-quarto: ${{ inputs.setup-quarto }}
           ignore-renv: ${{ inputs.ignore-renv }}
           dotnet-version: ${{ inputs.dotnet-version }}
+          extra-repositories: ${{ inputs.extra-repositories }}
           extra-packages: |
             rcmdcheck
             ${{ inputs.build-binary && 'pkgbuild' || '' }}
