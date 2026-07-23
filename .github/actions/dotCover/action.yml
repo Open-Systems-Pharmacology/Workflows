@@ -15,12 +15,12 @@ runs:
   steps:
     - id: install-prerequisites
       run: |
-        dotnet tool install --global JetBrains.dotCover.CommandLineTools --version 2024.3.5
-        nuget install NUnit.ConsoleRunner -Version 3.19.2 -DirectDownload -OutputDirectory .
+        dotnet tool install --global JetBrains.dotCover.CommandLineTools --version 2026.2.0
+        nuget install NUnit.ConsoleRunner -Version 3.22.0 -DirectDownload -OutputDirectory .
       shell: powershell
     
     - id: run-tests
-      run: dotnet dotcover cover ${{ inputs.xml-configuration }} --targetExecutable=./NUnit.ConsoleRunner.3.19.2/tools/nunit3-console.exe --output=coverageReport.xml --reportType=DetailedXML
+      run: dotnet dotcover cover ${{ inputs.xml-configuration }} --targetExecutable=./NUnit.ConsoleRunner.3.22.0/tools/nunit3-console.exe --output=coverageReport.xml --reportType=DetailedXML
       shell: powershell
 
     - uses: codecov/codecov-action@v5
