@@ -20,7 +20,7 @@ runs:
       shell: powershell
     
     - id: run-tests
-      run: dotnet dotcover cover ${{ inputs.xml-configuration }} --targetExecutable=./NUnit.ConsoleRunner.3.22.0/tools/nunit3-console.exe --output=coverageReport.xml --reportType=DetailedXML
+      run: dotcover cover ${{ inputs.xml-configuration }} --targetExecutable=./NUnit.ConsoleRunner.3.22.0/tools/nunit3-console.exe --output=coverageReport.xml --reportType=DetailedXML
       shell: powershell
 
     - uses: codecov/codecov-action@v5
