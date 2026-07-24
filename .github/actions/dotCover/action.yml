@@ -1,11 +1,8 @@
-name: 'Cover with JetBrains dotCover'
-description: 'Install and run JetBrains dotcover with an xml configuration'
+name: 'Code coverage'
+description: 'Collect code coverage with dotnet test (Microsoft Code Coverage) and upload cobertura to codecov'
 author: 'Robert McIntosh'
 
 inputs:
-  xml-configuration:
-    description: 'The xml file that configures the dotCover covearage'
-    required: true
   token:
     description: the codecov.io upload token
     required: true
@@ -13,19 +10,24 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - id: install-prerequisites
-      run: |
-        dotnet tool install --global JetBrains.dotCover.CommandLineTools --version 2026.2.0
-        nuget install NUnit.ConsoleRunner -Version 3.22.0 -DirectDownload -OutputDirectory .
-      shell: powershell
-    
     - id: run-tests
-      run: dotcover cover ${{ inputs.xml-configuration }} --targetExecutable=./NUnit.ConsoleRunner.3.22.0/tools/nunit3-console.exe --output=coverageReport.xml --reportType=DetailedXML
+      # dotnet test auto-detects the single solution in the repo root and reuses the
+      # build produced by the calling workflow (--no-build). Coverage is collected by the
+      # Microsoft Code Coverage collector, which supports .NET 10 (JetBrains dotCover's
+      # console runner cannot generate a report on net10 - see DCVR-13230). When a
+      # coverage.runsettings is present it configures the collector (cobertura output and
+      # exclusions); otherwise a plain cobertura collection is used.
+      run: |
+        if (Test-Path "coverage.runsettings") {
+          dotnet test --no-build -c Debug --settings coverage.runsettings --results-directory coverage-results
+        } else {
+          dotnet test --no-build -c Debug --collect "Code Coverage;Format=cobertura" --results-directory coverage-results
+        }
       shell: powershell
 
     - uses: codecov/codecov-action@v5
       with:
         fail_ci_if_error: true
-        files: ./coverageReport.xml
+        directory: ./coverage-results
         token: ${{ inputs.token }}
         verbose: true
