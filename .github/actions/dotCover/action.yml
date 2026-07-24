@@ -6,9 +6,6 @@ inputs:
   token:
     description: the codecov.io upload token
     required: true
-  xml-configuration:
-    description: 'Deprecated and ignored. Kept for backwards compatibility with callers that still pass the old dotCover config path.'
-    required: false
 
 runs:
   using: "composite"
