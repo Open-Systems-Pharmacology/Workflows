@@ -279,7 +279,7 @@ flowchart TD
 
 These two scheduled checks are specific to packages that resolve some dependencies from GitHub via `Remotes:` in DESCRIPTION (typically OSP packages that depend on other OSP packages not published on CRAN). A package whose dependencies all come from CRAN has nothing to gain here and should skip this section.
 
-Resolving those OSP dependencies from GitHub `Remotes:` forces a from-source build of each one. If the dependencies are published on an R-universe (for example `https://open-systems-pharmacology.r-universe.dev`), you can instead have CI pull the prebuilt binaries by adding that repository to `getOption("repos")`. Every reusable check exposes an `extra-repositories` input for this (forwarded to `r-lib/actions/setup-r`); `pak` then resolves the dependency from the R-universe binaries rather than compiling the `Remotes` from source. The value accepts a comma- or space-separated string, or a YAML block list with one URL per line:
+Resolving those OSP dependencies from GitHub `Remotes:` forces a from-source build of each one. If the dependencies are published on an R-universe (for example `https://open-systems-pharmacology.r-universe.dev`), you can instead have CI pull the prebuilt binaries by adding that repository to `getOption("repos")`. Every reusable R workflow that installs dependencies (`R-CMD-check-build`, `R-CMD-check-released-deps`, `test-coverage`, `pkgdown`, `update-renv-lockfile`) exposes an `extra-repositories` input for this (forwarded to `r-lib/actions/setup-r`); `pak` then resolves the dependency from the R-universe binaries rather than compiling the `Remotes` from source. The value accepts a comma- or space-separated string, or a YAML block list with one URL per line:
 
 ```yaml
 jobs:

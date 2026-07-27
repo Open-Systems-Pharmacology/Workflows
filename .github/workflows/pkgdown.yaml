@@ -8,6 +8,11 @@ on:
         required: false
         type: boolean
         default: false
+      extra-repositories:
+        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev, so pak can resolve dependencies from prebuilt binaries). Comma/space-separated, or one URL per line. Forwarded to setup-r-env.'
+        required: false
+        type: string
+        default: ''
       doc-path-filters:
         description: 'YAML string for dorny/paths-filter. On PRs, pkgdown is skipped when none of these paths changed. Ignored on push events.'
         required: false
@@ -62,6 +67,7 @@ jobs:
         with:
           setup-pandoc: 'true'
           ignore-renv: ${{ inputs.ignore-renv }}
+          extra-repositories: ${{ inputs.extra-repositories }}
           extra-packages: |
             pkgdown
             local::.

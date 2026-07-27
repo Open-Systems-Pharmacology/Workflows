@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: '8.0.x'
+      extra-repositories:
+        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev, so pak can resolve dependencies from prebuilt binaries). Comma/space-separated, or one URL per line. Forwarded to setup-r-env.'
+        required: false
+        type: string
+        default: ''
     secrets:
       CODECOV_TOKEN:
         required: true
@@ -39,6 +44,7 @@ jobs:
         with:
           ignore-renv: ${{ inputs.ignore-renv }}
           dotnet-version: ${{ inputs.dotnet-version }}
+          extra-repositories: ${{ inputs.extra-repositories }}
           extra-packages: |
             covr
             local::.
