@@ -4,6 +4,8 @@
 #   1. runs usethis::use_version(<which>)  (bumps the Version to the release
 #      number and renames the NEWS.md `(development version)` heading to it)
 #   2. pins Remotes to @*release   (OSP-specific; reuses manage_description.sh)
+#      Skipped for packages with no Remotes field, e.g. ones that resolve their
+#      OSP dependencies from an R-universe via Additional_repositories instead.
 # then opens a PR with those changes.
 #
 # `which` is one of major / minor / patch (usethis computes the release number
@@ -92,6 +94,14 @@ jobs:
           packages: |
             any::usethis
             any::desc
+          # This job only rewrites DESCRIPTION/NEWS.md, it never builds the
+          # package or its docs. Left on 'auto', the action's pandoc check
+          # resolves the caller's own dependencies with pak, which fails for
+          # packages whose deps live in an R-universe (pak ignores
+          # Additional_repositories), and the quarto check would install quarto
+          # for nothing.
+          install-pandoc: false
+          install-quarto: false
 
       - name: Set release version (usethis)
         id: ver
