@@ -5,6 +5,8 @@
 #   1. runs usethis::use_dev_version()  (Version x.y.z -> x.y.z.9000, and adds a
 #      `# <pkg> (development version)` NEWS.md heading)
 #   2. strips @*release from Remotes    (OSP-specific; reuses manage_description.sh)
+#      Skipped for packages with no Remotes field, e.g. ones that resolve their
+#      OSP dependencies from an R-universe via Additional_repositories instead.
 # then opens a PR with those changes.
 #
 # Mirrors the manual "Restoring development mode" procedure:
@@ -75,6 +77,14 @@ jobs:
           packages: |
             any::usethis
             any::desc
+          # This job only rewrites DESCRIPTION/NEWS.md, it never builds the
+          # package or its docs. Left on 'auto', the action's pandoc check
+          # resolves the caller's own dependencies with pak, which fails for
+          # packages whose deps live in an R-universe (pak ignores
+          # Additional_repositories), and the quarto check would install quarto
+          # for nothing.
+          install-pandoc: false
+          install-quarto: false
 
       - name: Restore development mode (usethis)
         id: dev
