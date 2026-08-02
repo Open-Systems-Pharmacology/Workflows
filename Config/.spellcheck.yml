@@ -1,7 +1,9 @@
+jobs: 4
 matrix:
 - name: Markdown
   aspell:
     lang: en
+    ignore-case: true
   dictionary:
     wordlists:
     - .github/workflows/wordlist.txt
