@@ -17,4 +17,4 @@ jobs:
     - run: |
         wget --no-check-certificate https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/main/Data/wordlist_osp_global.txt
         wget --no-check-certificate https://raw.githubusercontent.com/Open-Systems-Pharmacology/Workflows/main/Config/.spellcheck.yml
-    - uses: rojopolis/spellcheck-github-actions@0.35.0
+    - uses: rojopolis/spellcheck-github-actions@26a39cd487140d628757554605a8ad02f9f7caf8 #0.64.0
