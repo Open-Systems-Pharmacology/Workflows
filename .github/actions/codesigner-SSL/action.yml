@@ -32,7 +32,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-      - name: Show Warning
+      - name: Code Signing temporarily disabled
         shell: bash
         run: |
           echo "::warning::Code Signing temporarily disabled"
