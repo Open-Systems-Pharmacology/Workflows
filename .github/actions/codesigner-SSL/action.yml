@@ -50,7 +50,7 @@ runs:
 
       - name: Sign Artifact with CodeSignTool
         if: ${{ steps.codesign_check.outputs.enabled == 'true' }}
-        uses: sslcom/esigner-codesign@v1.3.2
+        uses: sslcom/esigner-codesign@cf5f6c1d38ad10f47e3ed9aca873f429b1a8d85b #v1.3.2
         with:
           # CodeSignTool Commands:
           # - get_credential_ids: Output the list of eSigner credential IDs associated with a particular user.
