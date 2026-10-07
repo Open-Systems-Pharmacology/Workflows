@@ -32,14 +32,24 @@ inputs:
 runs:
   using: "composite"
   steps:
+      - name: Check if Code Signing is enabled
+        id: codesign_check
+        shell: bash
+        run: |
+          if [ "${CODESIGN_ENABLED}" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Code Signing temporarily disabled
-        if: ${{ env.CODESIGN_ENABLED != 'true' }}
+        if: ${{ steps.codesign_check.outputs.enabled != 'true' }}
         shell: bash
         run: |
           echo "::warning::Code Signing temporarily disabled"
 
       - name: Sign Artifact with CodeSignTool
-        if: ${{ env.CODESIGN_ENABLED == 'true' }}
+        if: ${{ steps.codesign_check.outputs.enabled == 'true' }}
         uses: sslcom/esigner-codesign@v1.3.2
         with:
           # CodeSignTool Commands:
