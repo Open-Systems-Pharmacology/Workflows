@@ -42,30 +42,62 @@ jobs:
           use-public-rspm: true
           extra-repositories: ${{ inputs.extra-repositories }}
 
-      - name: Update project dependencies and snapshot lockfile
+      # Both R steps below start with Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE").
+      # setup-r sets this variable to public RSPM only, and renv then ignores
+      # every other repository, so packages that only exist on an extra
+      # repository (e.g. an R-universe) are "not available". Without it, renv
+      # uses the repositories in renv.lock. Packages in the DESCRIPTION Remotes
+      # field always come from their remote.
+
+      # Only for projects with renv/activate.R. That script installs the
+      # pinned renv when the R session starts, so renv is always available.
+      - name: Upgrade renv
+        if: hashFiles('renv/activate.R') != ''
         shell: Rscript {0}
         run: |
-          install.packages("renv")
+          Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE")
+          # When a newer renv is out, updates its version in renv.lock and
+          # renv/activate.R.
+          renv::upgrade(prompt = FALSE)
+
+      # A new R session, so that the upgraded renv is the one loaded.
+      - name: Update project dependencies and snapshot lockfile
+        shell: Rscript {0}
+        env:
+          EXTRA_REPOSITORIES: ${{ inputs.extra-repositories }}
+        run: |
+          Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE")
+          # Projects without renv/activate.R do not install renv on startup.
+          if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+
+          # Add the extra repositories that renv.lock does not list.
+          repos <- getOption("repos")
+          extra <- strsplit(Sys.getenv("EXTRA_REPOSITORIES"), "[[:space:],]+")[[1]]
+          extra <- setdiff(sub("/+$", "", extra[nzchar(extra)]), sub("/+$", "", repos))
+          options(repos = c(repos, stats::setNames(extra, extra)))
+
           renv::install(prompt = FALSE, lock = TRUE)
 
-      - name: Check if renv.lock changed
+      - name: Check if renv.lock or renv/activate.R changed
         id: check-changes
         run: |
-          if [ -z "$(git status --porcelain -- renv.lock)" ]; then
+          if [ -z "$(git status --porcelain -- renv.lock renv/activate.R)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "renv.lock is unchanged, skipping downstream jobs."
+            echo "renv.lock and renv/activate.R are unchanged, skipping downstream jobs."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "renv.lock has been updated."
-            git diff renv.lock
+            echo "renv.lock or renv/activate.R has been updated."
+            git diff renv.lock renv/activate.R
           fi
 
-      - name: Upload updated renv.lock
+      - name: Upload updated renv files
         if: steps.check-changes.outputs.changed == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: renv-lock
-          path: renv.lock
+          path: |
+            renv.lock
+            renv/activate.R
           retention-days: 1
 
   test-on-platforms:
@@ -84,7 +116,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Download updated renv.lock
+      - name: Download updated renv files
         uses: actions/download-artifact@v8
         with:
           name: renv-lock
@@ -125,15 +157,15 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Download updated renv.lock
+      - name: Download updated renv files
         uses: actions/download-artifact@v8
         with:
           name: renv-lock
           path: .
 
-      - name: Commit renv.lock if changed
+      - name: Commit renv files if changed
         uses: EndBug/add-and-commit@v9
         with:
           message: '🤖 Update renv.lock [skip actions]'
           default_author: github_actions
-          add: 'renv.lock'
+          add: 'renv.lock renv/activate.R'
