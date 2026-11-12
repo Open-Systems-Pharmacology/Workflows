@@ -126,7 +126,7 @@ runs:
         PKGCACHE_HTTP_VERSION: '1.1'
       run: |
         Rscript -e 'lib <- Sys.getenv("R_LIBS_USER")' \
-          -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", lib = lib)' \
+          -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", lib = lib, repos = Sys.getenv("RSPM", "https://cloud.r-project.org"))' \
           -e 'renv::restore(library = lib, packages = "renv")'
         Rscript -e 'message("Restoring with renv ", packageVersion("renv"))' \
           -e 'renv::restore(library = Sys.getenv("R_LIBS_USER"))'
