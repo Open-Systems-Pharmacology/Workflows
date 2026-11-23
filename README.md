@@ -53,7 +53,7 @@ The R-universe must build every remote, from its latest GitHub release, at a ver
 
 On a dev version, give every OSP dependency a `Remotes:` entry, and do not list an OSP or esqLABS R-universe in `Additional_repositories:` yourself. Otherwise `setup-r-env` adds that R-universe to the repos, and an OSP dependency with no `Remotes:` entry silently installs its released build. `dev-remotes` logs a warning in that case.
 
-A release DESCRIPTION has no `Remotes:`, and pak ignores `Additional_repositories:`. To install a release from GitHub, add the R-universe to your repos first:
+A release DESCRIPTION has no `Remotes:`. To install a release from GitHub, `remotes::install_github()` and `devtools::install_deps()` need no setup: they read `Additional_repositories:` and find the OSP dependencies on the R-universe. pak ignores that field, so with pak, add the R-universe to your repos first:
 
 ```r
 options(repos = c(osp = "https://open-systems-pharmacology.r-universe.dev", getOption("repos")))
