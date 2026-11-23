@@ -42,8 +42,8 @@ jobs:
           use-public-rspm: true
           extra-repositories: ${{ inputs.extra-repositories }}
 
-      # Both R steps below start with Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE").
-      # setup-r sets this variable to public RSPM only, and renv then ignores
+      # This step and snapshot-renv-lock start with
+      # Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE"). setup-r sets this variable to public RSPM only, and renv then ignores
       # every other repository, so packages that only exist on an extra
       # repository (e.g. an R-universe) are "not available". Without it, renv
       # uses the repositories in renv.lock. Packages in the DESCRIPTION Remotes
@@ -62,21 +62,9 @@ jobs:
 
       # A new R session, so that the upgraded renv is the one loaded.
       - name: Update project dependencies and snapshot lockfile
-        shell: Rscript {0}
-        env:
-          EXTRA_REPOSITORIES: ${{ inputs.extra-repositories }}
-        run: |
-          Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE")
-          # Projects without renv/activate.R do not install renv on startup.
-          if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
-
-          # Add the extra repositories that renv.lock does not list.
-          repos <- getOption("repos")
-          extra <- strsplit(Sys.getenv("EXTRA_REPOSITORIES"), "[[:space:],]+")[[1]]
-          extra <- setdiff(sub("/+$", "", extra[nzchar(extra)]), sub("/+$", "", repos))
-          options(repos = c(repos, stats::setNames(extra, extra)))
-
-          renv::install(prompt = FALSE, lock = TRUE)
+        uses: Open-Systems-Pharmacology/Workflows/.github/actions/snapshot-renv-lock@main
+        with:
+          extra-repositories: ${{ inputs.extra-repositories }}
 
       - name: Check if renv.lock or renv/activate.R changed
         id: check-changes

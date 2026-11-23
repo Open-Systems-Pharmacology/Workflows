@@ -42,7 +42,7 @@ on:
         type: string
         default: ''
       extra-repositories:
-        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev, so pak can resolve dependencies from prebuilt binaries). Comma/space-separated, or one URL per line. Forwarded to setup-r-env.'
+        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev). Comma/space-separated, or one URL per line. Forwarded to setup-r-env, which also adds the DESCRIPTION Additional_repositories, so a package that follows the dev/release dependency model needs no value here.'
         required: false
         type: string
         default: ''

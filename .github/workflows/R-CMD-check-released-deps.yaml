@@ -20,7 +20,7 @@ on:
         type: boolean
         default: false
       extra-repositories:
-        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev, so pak can resolve dependencies from prebuilt binaries). Comma/space-separated, or one URL per line. Forwarded to setup-r-env.'
+        description: 'Extra CRAN-like repositories to add to getOption("repos") (e.g. an R-universe such as https://open-systems-pharmacology.r-universe.dev). Comma/space-separated, or one URL per line. Forwarded to setup-r-env, which also adds the DESCRIPTION Additional_repositories, so a package that follows the dev/release dependency model needs no value here.'
         required: false
         type: string
         default: ''
@@ -33,7 +33,9 @@ jobs:
   # Check the package against the latest *released* OSP dependencies. This runs
   # for every version, dev (x.y.z.NNNN) and release (x.y.z) alike: an
   # intermediate dev version must also be testable against released deps, so the
-  # Remotes are pinned to @*release ephemerally below before the check.
+  # DESCRIPTION is switched to its release form ephemerally below (no
+  # Remotes, R-universe in Additional_repositories, which setup-r-env
+  # adds to the repos).
   R-CMD-check-released-deps:
     runs-on: ${{ matrix.config.os }}
 
@@ -62,16 +64,15 @@ jobs:
           path: .workflows-repo
           persist-credentials: false
 
-      - name: Pin Remotes to released versions
+      - name: Switch OSP dependencies to the R-universe
         shell: bash
-        run: |
-          .workflows-repo/.github/scripts/manage_description.sh pin-remotes DESCRIPTION >/dev/null
-          echo "Remotes pinned to released versions:"
-          awk '/^Remotes:/{in_r=1; print; next} in_r && /^[^ \t]/{exit} in_r{print}' DESCRIPTION
+        run: .workflows-repo/.github/scripts/manage_description.sh release-remotes DESCRIPTION >/dev/null
 
+      # The action from the same commit as the script above: the release form
+      # needs setup-r-env to add Additional_repositories to the repos.
       - name: Setup R environment
         id: setup-r-env
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
+        uses: ./.workflows-repo/.github/actions/setup-r-env
         with:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'

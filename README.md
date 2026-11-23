@@ -16,15 +16,49 @@ This is a suggested, complete GitHub Actions setup for an OSP R package: a refer
 
 | Workflow | Trigger it is wired to | What it does |
 | --- | --- | --- |
-| `sync-remotes.yaml` | `pull_request` | Pins (`@*release`) or unpins `Remotes:` in DESCRIPTION to match the package Version, and commits the fix back to the PR branch so the merged tree carries the right pin. |
+| `sync-remotes.yaml` | `pull_request` | Switches the OSP dependency fields in DESCRIPTION to match the package Version (see [Dependency model](#dependency-model)), and commits the fix back to the PR branch so the merged tree carries the right fields. |
 | `bump-dev-version.yaml` | `push` to default branch | On a dev version (`x.y.z.NNNN`), increments the trailing component and commits it. Release versions are a no-op. |
-| `release-pr.yaml` | `workflow_dispatch` | Runs `usethis::use_version(which)`, pins Remotes to `@*release`, and opens a `release-pr-<version>` PR. |
-| `dev-pr.yaml` | `release` (published) / dispatch | Runs `usethis::use_dev_version()`, unpins Remotes, and opens a `dev-pr-<version>` PR (restores development mode after a release). |
+| `release-pr.yaml` | `workflow_dispatch` | Runs `usethis::use_version(which)`, switches the OSP dependencies to the R-universe, and opens a `release-pr-<version>` PR. |
+| `dev-pr.yaml` | `release` (published) / dispatch | Runs `usethis::use_dev_version()`, restores the development `Remotes`, and opens a `dev-pr-<version>` PR (restores development mode after a release). |
 | `publish-release.yaml` | `workflow_dispatch` (after a release PR merges) | Force-tags `vX.Y.Z` at the current commit and creates/updates the GitHub Release, with notes from NEWS.md and the per-OS binaries from the same run attached. Dev versions are skipped. |
 | `R-CMD-check-build.yaml` | `pull_request`, `push`, dispatch | Runs `R CMD check` across the OS matrix; optionally builds and uploads the per-OS binary packages that `publish-release` attaches. |
-| `R-CMD-check-released-deps.yaml` | scheduled / dispatch | Runs `R CMD check` with Remotes pinned to `@*release`, i.e. against the latest **released** OSP dependencies. |
+| `R-CMD-check-released-deps.yaml` | dispatch | Runs `R CMD check` with DESCRIPTION switched to its release form, i.e. against the latest **released** OSP dependencies from the R-universe. Optional: a release PR already runs this check (see [Dependency model](#dependency-model)). |
 | `test-coverage.yaml` | `pull_request`, `push` | Computes coverage with `covr` and uploads to Codecov. |
 | `pkgdown.yaml` | `pull_request`, `push` | Builds the pkgdown site; deploys to GitHub Pages on non-PR events. |
+
+### Dependency model
+
+OSP packages often depend on other OSP packages that are not on CRAN. Where these dependencies come from depends on the package Version:
+
+| Version | OSP dependencies come from | DESCRIPTION fields |
+| --- | --- | --- |
+| Dev (`x.y.z.NNNN`), the default branch | The development version on GitHub | Bare `Remotes:` entries, such as `Open-Systems-Pharmacology/OSPSuite.RUtils` or `tlf=Open-Systems-Pharmacology/TLF-Library`. |
+| Release (`x.y.z`) | The latest release, built by the R-universe of the GitHub owner | No `Remotes:` field. The R-universe (`https://<owner>.r-universe.dev`) is in `Additional_repositories:`. The development remotes are kept in `Config/osp/dev-remotes:`, and the repositories the switch added in `Config/osp/release-repositories:`. R and pak ignore both fields. |
+
+You edit only `Remotes:` on the default branch. The workflows do the switch:
+
+- `release-pr` and `sync-remotes` (on a release version) move every remote to `Config/osp/dev-remotes:`, remove `Remotes:`, and add the R-universe of each OSP or esqLABS owner to `Additional_repositories:`.
+- `dev-pr` and `sync-remotes` (on a dev version) move the `Config/osp/dev-remotes:` entries back to `Remotes:`, and remove from `Additional_repositories:` the repositories that the release switch added. Repositories that you added yourself stay.
+- In a renv project, each of these switches also re-snapshots `renv.lock` in the same change.
+- `R-CMD-check-released-deps` does the release switch for the duration of the check only.
+
+The switch concerns only `Remotes:` entries. CRAN dependencies do not change. A release never has a `Remotes:` field, so the release installs each dependency from a repository:
+
+- A remote with an explicit ref, such as `Open-Systems-Pharmacology/rSharp@v2.0.0`, does not keep that ref. The release gets the version that the R-universe builds. The workflow logs a warning.
+- A remote of an owner other than `Open-Systems-Pharmacology` or `esqLABS`, or a non-GitHub remote (`url::`, `git::`), gets no R-universe. The workflow logs a warning, and the package must be available from another repository (for example CRAN).
+
+The R-universe must build every remote, from its latest GitHub release, at a version that satisfies the `Imports:` constraints. Check its status page (for example <https://open-systems-pharmacology.r-universe.dev/builds>) before you release.
+
+`setup-r-env` adds the DESCRIPTION `Additional_repositories:` to the R `repos` option, because pak ignores that field. A release version therefore installs from the R-universe with no extra configuration. For a package with `renv.lock`, the lockfile follows the same switch. `release-pr`, `dev-pr` and `sync-remotes` re-snapshot `renv.lock` (with the `snapshot-renv-lock` action) whenever they switch the dependency fields. A release lockfile records the OSP dependencies from the R-universe, and a dev lockfile records them from GitHub. CI restores the lockfile in both cases, so what you test is what `renv.lock` records. The release PR checks and the binaries that `publish-release` attaches use the released dependencies.
+
+On a dev version, give every OSP dependency a `Remotes:` entry, and do not list an OSP or esqLABS R-universe in `Additional_repositories:` yourself. Otherwise `setup-r-env` adds that R-universe to the repos, and an OSP dependency with no `Remotes:` entry silently installs its released build. `dev-remotes` logs a warning in that case.
+
+A release DESCRIPTION has no `Remotes:`. To install a release from GitHub, `remotes::install_github()` and `devtools::install_deps()` need no setup: they read `Additional_repositories:` and find the OSP dependencies on the R-universe. pak ignores that field, so with pak, add the R-universe to your repos first:
+
+```r
+options(repos = c(osp = "https://open-systems-pharmacology.r-universe.dev", getOption("repos")))
+pak::pkg_install("Open-Systems-Pharmacology/OSPSuite-R@v13.0.1")
+```
 
 ### Setting up a consuming repository
 
@@ -246,12 +280,12 @@ jobs:
 ```mermaid
 flowchart TD
     subgraph dispatch["Manual dispatch"]
-      RPR["release-pr<br/>use_version(which) + pin Remotes"] -->|opens PR| RELPR(["Release PR"])
-      DPR["dev-pr<br/>use_dev_version() + unpin Remotes"] -->|opens PR| DEVPR(["Back-to-dev PR"])
+      RPR["release-pr<br/>use_version(which) + R-universe deps"] -->|opens PR| RELPR(["Release PR"])
+      DPR["dev-pr<br/>use_dev_version() + dev Remotes"] -->|opens PR| DEVPR(["Back-to-dev PR"])
     end
 
     subgraph pr["On pull_request"]
-      SYNC["sync-remotes<br/>pin or unpin to match Version"] --> CHECK["R-CMD-check / test-coverage / pkgdown<br/>(run on the synced tree)"]
+      SYNC["sync-remotes<br/>dependency fields match Version"] --> CHECK["R-CMD-check / test-coverage / pkgdown<br/>(run on the synced tree)"]
     end
 
     RELPR --> pr
@@ -275,47 +309,19 @@ flowchart TD
 
 
 
-### Nightly dependency checks (Remotes-based packages only)
+### Nightly check (Remotes-based packages only)
 
-These two scheduled checks are specific to packages that resolve some dependencies from GitHub via `Remotes:` in DESCRIPTION (typically OSP packages that depend on other OSP packages not published on CRAN). A package whose dependencies all come from CRAN has nothing to gain here and should skip this section.
+This scheduled check is for packages that install some dependencies from GitHub through `Remotes:` (typically OSP packages that depend on other OSP packages). An upstream change on GitHub can break your package even when your repository gets no push, so run `R CMD check` on the default branch every night. On the default branch (a dev version), this checks against the current development dependencies.
 
-Resolving those OSP dependencies from GitHub `Remotes:` forces a from-source build of each one. If the dependencies are published on an R-universe (for example `https://open-systems-pharmacology.r-universe.dev`), you can instead have CI pull the prebuilt binaries by adding that repository to `getOption("repos")`. Every reusable R workflow that installs dependencies (`R-CMD-check-build`, `R-CMD-check-released-deps`, `test-coverage`, `pkgdown`, `update-renv-lockfile`) exposes an `extra-repositories` input for this (forwarded to `r-lib/actions/setup-r`); `pak` then resolves the dependency from the R-universe binaries rather than compiling the `Remotes` from source. The value accepts a comma- or space-separated string, or a YAML block list with one URL per line:
+For a package with `renv.lock`, this check restores the lockfile. Pair it with `update-renv-lockfile` scheduled earlier in the night: that workflow installs the current dependencies, checks the package with them, and commits the new `renv.lock`, so the nightly check runs on dependencies that are at most a day old.
 
-```yaml
-jobs:
-  R-CMD-Check:
-    uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
-    with:
-      extra-repositories: 'https://open-systems-pharmacology.r-universe.dev'
-```
-
-The pair catches drift in both directions: `check-dev-deps` checks against the current development dependencies (the unpinned Remotes as they stand in DESCRIPTION), while `check-released-deps` pins Remotes to `@*release` and checks against the latest released ones. Running both nightly surfaces a break early, whether it comes from an upstream development change or from a not-yet-released upstream fix the package has started relying on.
+You do not need a nightly check against the released dependencies. A release PR has a release version, so its checks already use the released dependencies from the R-universe. To check the default branch against them before you start a release, call `R-CMD-check-released-deps` from a caller workflow that has a `workflow_dispatch` trigger, and run it by hand.
 
 <details>
-<summary><code>check-released-deps.yaml</code></summary>
+<summary><code>nightly-check.yaml</code></summary>
 
 ```yaml
-name: Check against released dependencies
-
-on:
-  schedule:
-    - cron: '0 3 * * *'
-  workflow_dispatch:
-
-permissions: read-all
-
-jobs:
-  check-released-deps:
-    uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-released-deps.yaml@main
-```
-
-</details>
-
-<details>
-<summary><code>check-dev-deps.yaml</code></summary>
-
-```yaml
-name: Check against development dependencies
+name: Nightly check
 
 on:
   schedule:
@@ -325,8 +331,18 @@ on:
 permissions: read-all
 
 jobs:
-  check-dev-deps:
+  R-CMD-Check:
     uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
 ```
 
 </details>
+
+Every reusable R workflow that installs dependencies (`R-CMD-check-build`, `R-CMD-check-released-deps`, `test-coverage`, `pkgdown`, `update-renv-lockfile`) also has an `extra-repositories` input. These repositories are added to `getOption("repos")` in addition to the DESCRIPTION `Additional_repositories:`. A package that follows the dependency model does not need it. Use it for a repository that the package needs in every mode. The value accepts a comma- or space-separated string, or a YAML block list with one URL per line:
+
+```yaml
+jobs:
+  R-CMD-Check:
+    uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
+    with:
+      extra-repositories: 'https://example.r-universe.dev'
+```

@@ -1,11 +1,14 @@
 ---
-# Reusable workflow that keeps `Remotes:` in sync with the package Version, in
-# the pull request itself.
+# Reusable workflow that keeps the OSP dependency fields of DESCRIPTION in sync
+# with the package Version, in the pull request itself.
 #
-# A dev version (x.y.z.NNNN) gets bare Remotes (no @*release); a release version
-# (x.y.z) gets @*release pinned. The corrected DESCRIPTION is committed and
-# pushed back onto the PR head branch, so the merged (and later tagged) tree
-# already carries the right pin. See docs/description-tagging-rethink.md.
+# A dev version (x.y.z.NNNN) resolves its OSP dependencies from GitHub through
+# bare `Remotes:` (manage_description.sh dev-remotes). A release version (x.y.z)
+# resolves them from the R-universe: all remotes move to
+# `Config/osp/dev-remotes:`, `Remotes:` is removed, and the R-universe goes into
+# `Additional_repositories:` (manage_description.sh release-remotes). The
+# corrected DESCRIPTION is committed and pushed back onto the PR head branch, so
+# the merged (and later tagged) tree already carries the right fields.
 #
 # Wire this on `pull_request` from the caller. Pushing to the PR branch uses the
 # default GITHUB_TOKEN, so no GitHub App token is needed. Fork PRs are reported
@@ -64,22 +67,48 @@ jobs:
           esac
           if [ "$is_dev" = "true" ]; then
             echo "VERSION_KIND=dev" >> "$GITHUB_OUTPUT"
-            "$script" unpin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+            "$script" dev-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
           else
             echo "VERSION_KIND=release" >> "$GITHUB_OUTPUT"
-            "$script" pin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+            "$script" release-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
           fi
+          # git add fails on a path that does not exist, so list the renv
+          # files only for a renv project.
+          pattern=DESCRIPTION
+          for f in renv.lock renv/activate.R; do
+            if [ -f "$f" ]; then pattern="$pattern $f"; fi
+          done
+          echo "FILE_PATTERN=$pattern" >> "$GITHUB_OUTPUT"
+
+      # When the dependency fields switched, renv.lock must follow, so that a
+      # renv restore installs what this Version declares. Same-repo PRs only:
+      # the result is pushed back, which a fork PR cannot receive.
+      - name: Setup R (renv.lock snapshot)
+        if: >-
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (steps.sync.outputs.REMOTES_ACTION == 'released' || steps.sync.outputs.REMOTES_ACTION == 'restored') &&
+          hashFiles('renv.lock') != ''
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Snapshot renv.lock
+        if: >-
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (steps.sync.outputs.REMOTES_ACTION == 'released' || steps.sync.outputs.REMOTES_ACTION == 'restored') &&
+          hashFiles('renv.lock') != ''
+        uses: ./.workflows-repo/.github/actions/snapshot-renv-lock
 
       - name: Commit synced DESCRIPTION to PR branch
         id: auto-commit
         # git-auto-commit-action cannot push to a fork's branch from the base
-        # repo's workflow. Skip the push for cross-repo PRs (the released-deps
-        # gate still pins ephemerally, so the PR is not left unchecked).
+        # repo's workflow. Skip the push for cross-repo PRs: the PR is then
+        # checked on its DESCRIPTION as written.
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'Sync Remotes for ${{ steps.sync.outputs.VERSION_KIND }} version. [skip actions]'
-          file_pattern: 'DESCRIPTION'
+          file_pattern: ${{ steps.sync.outputs.FILE_PATTERN }}
 
       # Report only when Remotes were actually changed and the fix was pushed.
       # When already in sync (or no Remotes field, or a fork we can't push to),
@@ -98,8 +127,8 @@ jobs:
           short_sha="${COMMIT_HASH:0:7}"
           commit_url="${SERVER_URL}/${REPO}/commit/${COMMIT_HASH}"
           case "$REMOTES_ACTION" in
-            added)    action="Pinned Remotes to \`@*release\` (release version)" ;;
-            stripped) action="Stripped \`@*release\` from Remotes (dev version)" ;;
+            released) action="Switched OSP dependencies to the R-universe (release version)" ;;
+            restored) action="Restored OSP dependencies to GitHub \`Remotes\` (dev version)" ;;
             *)        action="Updated Remotes" ;;
           esac
           echo "::notice title=Remotes synced::${action}; pushed ${short_sha}"
@@ -110,7 +139,7 @@ jobs:
             echo ""
             echo "- **Commit:** [\`${short_sha}\`](${commit_url})"
             echo ""
-            echo "<details><summary>Remotes after</summary>"
+            echo "<details><summary>Dependency fields after</summary>"
             echo ""
             echo '```'
             echo "$REMOTES_AFTER_B64" | base64 -d

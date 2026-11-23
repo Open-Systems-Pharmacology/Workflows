@@ -3,9 +3,13 @@
 # it locally with usethis::use_version(). On the current default branch it:
 #   1. runs usethis::use_version(<which>)  (bumps the Version to the release
 #      number and renames the NEWS.md `(development version)` heading to it)
-#   2. pins Remotes to @*release   (OSP-specific; reuses manage_description.sh)
-#      Skipped for packages with no Remotes field, e.g. ones that resolve their
-#      OSP dependencies from an R-universe via Additional_repositories instead.
+#   2. switches the OSP dependencies to the R-universe (OSP-specific; reuses
+#      manage_description.sh release-remotes): all `Remotes:` move to
+#      `Config/osp/dev-remotes:`, `Remotes:` is removed, and the R-universe
+#      goes into `Additional_repositories:`.
+#      A no-op for packages with no Remotes field.
+#   3. re-snapshots renv.lock (renv projects), so it records the released
+#      dependencies that the release PR checks install.
 # then opens a PR with those changes.
 #
 # `which` is one of major / minor / patch (usethis computes the release number
@@ -115,17 +119,23 @@ jobs:
           ver <- as.character(desc::desc_get_version("DESCRIPTION"))
           cat(sprintf("VERSION=%s\n", ver), file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
 
-      - name: Pin Remotes to released versions
-        id: pin
+      - name: Switch OSP dependencies to the R-universe
+        id: deps
         shell: bash
-        run: .workflows-repo/.github/scripts/manage_description.sh pin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+        run: .workflows-repo/.github/scripts/manage_description.sh release-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+
+      # renv.lock must record what a release version installs: the OSP
+      # dependencies from the R-universe, not from their development Remotes.
+      - name: Snapshot renv.lock for the release
+        if: hashFiles('renv.lock') != ''
+        uses: ./.workflows-repo/.github/actions/snapshot-renv-lock
 
       - name: Open release PR
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.ver.outputs.VERSION }}
-          REMOTES_ACTION: ${{ steps.pin.outputs.REMOTES_ACTION }}
+          REMOTES_ACTION: ${{ steps.deps.outputs.REMOTES_ACTION }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -134,6 +144,8 @@ jobs:
           # Stage only the package metadata we changed (never the .workflows-repo
           # helper checkout, which would otherwise be added as a gitlink).
           git add DESCRIPTION NEWS.md
+          if [ -f renv.lock ]; then git add renv.lock; fi
+          if [ -f renv/activate.R ]; then git add renv/activate.R; fi
           if git diff --cached --quiet; then
             # Tree already at the release version: nothing to open (silent no-op).
             exit 0
@@ -146,8 +158,11 @@ jobs:
           git push --force origin "$branch"
 
           remotes_bullet=""
-          if [ "$REMOTES_ACTION" = "added" ]; then
-            remotes_bullet=$'\n- `Remotes` pinned to `@*release`'
+          if [ -f renv.lock ]; then
+            remotes_bullet=$'\n- `renv.lock` snapshotted with the released dependencies'
+          fi
+          if [ "$REMOTES_ACTION" = "released" ]; then
+            remotes_bullet+=$'\n- OSP dependencies resolve from the R-universe (`Remotes` removed and kept in `Config/osp/dev-remotes`, `Additional_repositories` set)'
           fi
 
           # Only an OPEN PR counts as existing; a closed/merged PR on the same
