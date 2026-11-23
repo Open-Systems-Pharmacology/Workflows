@@ -38,7 +38,11 @@ inputs:
     required: false
     default: '8.0.x'
   ignore-renv:
-    description: 'Skip renv setup if set to true'
+    description: >-
+      Skip renv setup if set to true. renv is also skipped when DESCRIPTION has
+      a release Version (x.y.z): renv.lock records the development sources of
+      the OSP dependencies, and a release resolves them from the R-universe in
+      Additional_repositories instead.
     required: false
     default: 'false'
   extra-packages:
@@ -94,7 +98,11 @@ runs:
         if [ -f DESCRIPTION ]; then
           additional=$(awk '/^Additional_repositories:/{in_f=1; sub(/^[^:]*:/, ""); print; next} in_f && /^[ \t]/{print; next} {in_f=0}' DESCRIPTION)
         fi
-        repos=$(printf '%s %s' "$EXTRA_REPOSITORIES" "$additional" | tr ',\t\r\n' '    ' | xargs -n1 2>/dev/null | awk '!seen[$0]++' | xargs)
+        # One URL per line, trailing slashes dropped, duplicates removed
+        # (case-insensitive), then joined with spaces for setup-r.
+        repos=$(printf '%s %s' "$EXTRA_REPOSITORIES" "$additional" \
+          | tr ',\t\r\n' '    ' | tr -s ' ' '\n' | sed -e '/^$/d' -e 's#/*$##' \
+          | awk '!seen[tolower($0)]++' | paste -sd ' ' -)
         if [ -n "$repos" ]; then echo "Extra repositories: $repos"; fi
         echo "repos=$repos" >> "$GITHUB_OUTPUT"
 
@@ -106,20 +114,37 @@ runs:
         use-public-rspm: ${{ inputs.use-public-rspm }}
         extra-repositories: ${{ steps.repos.outputs.repos }}
 
+    # use_renv: restore renv.lock, unless ignore-renv is set or DESCRIPTION has
+    # a release Version (x.y.z), which resolves from DESCRIPTION instead.
     - name: Check for renv.lock
       id: check-renv
-      run: echo "renv_detected=$([ -f renv.lock ] && echo true || echo false)" >> $GITHUB_OUTPUT
       shell: bash
+      env:
+        IGNORE_RENV: ${{ inputs.ignore-renv }}
+      run: |
+        detected=false
+        [ -f renv.lock ] && detected=true
+        use_renv="$detected"
+        [ "$IGNORE_RENV" = 'true' ] && use_renv=false
+        if [ "$use_renv" = true ] && [ -f DESCRIPTION ]; then
+          version=$(grep '^Version:' DESCRIPTION | tr -d '\r' | sed 's/^Version:[[:space:]]*//' || true)
+          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::notice title=renv skipped::Release version $version resolves its dependencies from DESCRIPTION, not renv.lock"
+            use_renv=false
+          fi
+        fi
+        echo "renv_detected=$detected" >> "$GITHUB_OUTPUT"
+        echo "use_renv=$use_renv" >> "$GITHUB_OUTPUT"
 
     - name: Setup renv (Linux/macOS)
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os != 'Windows'
+      if: steps.check-renv.outputs.use_renv == 'true' && runner.os != 'Windows'
       uses: r-lib/actions/setup-renv@v2
 
     # Windows: point R_LIBS_USER to a cacheable absolute path and install
     # packages there via renv::restore(library=...) on cache miss.
     # On cache hit, R finds packages directly — no renv restore needed.
     - name: Configure R library for caching (Windows)
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+      if: steps.check-renv.outputs.use_renv == 'true' && runner.os == 'Windows'
       shell: bash
       run: |
         R_LIB_PATH="${{ runner.temp }}/R-lib"
@@ -128,7 +153,7 @@ runs:
         echo "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE" >> $GITHUB_ENV
 
     - name: Cache R library (Windows)
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows'
+      if: steps.check-renv.outputs.use_renv == 'true' && runner.os == 'Windows'
       id: cache-renv-win
       uses: actions/cache@v5
       with:
@@ -139,7 +164,7 @@ runs:
     # renv. Restore renv first, then restore the rest in a new R session, which
     # loads the locked renv from R_LIBS_USER.
     - name: Install packages from renv.lock (Windows, cache miss)
-      if: steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true' && runner.os == 'Windows' && steps.cache-renv-win.outputs.cache-hit != 'true'
+      if: steps.check-renv.outputs.use_renv == 'true' && runner.os == 'Windows' && steps.cache-renv-win.outputs.cache-hit != 'true'
       shell: bash
       env:
         PKGCACHE_HTTP_VERSION: '1.1'
@@ -156,7 +181,7 @@ runs:
     # packages: the Windows cache key excludes extra-packages, so a cache hit can
     # return a lib predating a newly-added tool.
     - name: Install extra CI tool packages (renv projects)
-      if: inputs.extra-packages != '' && steps.check-renv.outputs.renv_detected == 'true' && inputs.ignore-renv != 'true'
+      if: inputs.extra-packages != '' && steps.check-renv.outputs.use_renv == 'true'
       shell: Rscript {0}
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
@@ -198,7 +223,7 @@ runs:
         }
 
     - name: Setup R dependencies
-      if: steps.check-renv.outputs.renv_detected == 'false' || inputs.ignore-renv == 'true'
+      if: steps.check-renv.outputs.use_renv != 'true'
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
         extra-packages: ${{ inputs.extra-packages }}

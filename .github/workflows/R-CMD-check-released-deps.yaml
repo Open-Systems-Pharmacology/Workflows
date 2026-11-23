@@ -68,9 +68,11 @@ jobs:
         shell: bash
         run: .workflows-repo/.github/scripts/manage_description.sh release-remotes DESCRIPTION >/dev/null
 
+      # The action from the same commit as the script above: the release form
+      # needs setup-r-env to add Additional_repositories to the repos.
       - name: Setup R environment
         id: setup-r-env
-        uses: Open-Systems-Pharmacology/Workflows/.github/actions/setup-r-env@main
+        uses: ./.workflows-repo/.github/actions/setup-r-env
         with:
           r-version: ${{ matrix.config.r }}
           setup-pandoc: 'true'

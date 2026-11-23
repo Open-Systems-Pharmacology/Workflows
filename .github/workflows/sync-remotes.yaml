@@ -76,8 +76,8 @@ jobs:
       - name: Commit synced DESCRIPTION to PR branch
         id: auto-commit
         # git-auto-commit-action cannot push to a fork's branch from the base
-        # repo's workflow. Skip the push for cross-repo PRs (the released-deps
-        # gate still pins ephemerally, so the PR is not left unchecked).
+        # repo's workflow. Skip the push for cross-repo PRs: the PR is then
+        # checked on its DESCRIPTION as written.
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: stefanzweifel/git-auto-commit-action@v7
         with:

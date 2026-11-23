@@ -22,7 +22,7 @@ This is a suggested, complete GitHub Actions setup for an OSP R package: a refer
 | `dev-pr.yaml` | `release` (published) / dispatch | Runs `usethis::use_dev_version()`, restores the development `Remotes`, and opens a `dev-pr-<version>` PR (restores development mode after a release). |
 | `publish-release.yaml` | `workflow_dispatch` (after a release PR merges) | Force-tags `vX.Y.Z` at the current commit and creates/updates the GitHub Release, with notes from NEWS.md and the per-OS binaries from the same run attached. Dev versions are skipped. |
 | `R-CMD-check-build.yaml` | `pull_request`, `push`, dispatch | Runs `R CMD check` across the OS matrix; optionally builds and uploads the per-OS binary packages that `publish-release` attaches. |
-| `R-CMD-check-released-deps.yaml` | scheduled / dispatch | Runs `R CMD check` with DESCRIPTION switched to its release form, i.e. against the latest **released** OSP dependencies from the R-universe. |
+| `R-CMD-check-released-deps.yaml` | dispatch | Runs `R CMD check` with DESCRIPTION switched to its release form, i.e. against the latest **released** OSP dependencies from the R-universe. Optional: a release PR already runs this check (see [Dependency model](#dependency-model)). |
 | `test-coverage.yaml` | `pull_request`, `push` | Computes coverage with `covr` and uploads to Codecov. |
 | `pkgdown.yaml` | `pull_request`, `push` | Builds the pkgdown site; deploys to GitHub Pages on non-PR events. |
 
@@ -43,12 +43,21 @@ You edit only `Remotes:` on the default branch. The workflows do the switch:
 
 The switch concerns only `Remotes:` entries. CRAN dependencies do not change. A release never has a `Remotes:` field, so the release installs each dependency from a repository:
 
-- A remote with an explicit ref, such as `Open-Systems-Pharmacology/rSharp@v2.0.0`, does not keep that ref. The release gets the version that the R-universe builds. The workflow logs a notice.
+- A remote with an explicit ref, such as `Open-Systems-Pharmacology/rSharp@v2.0.0`, does not keep that ref. The release gets the version that the R-universe builds. The workflow logs a warning.
 - A remote of an owner other than `Open-Systems-Pharmacology` or `esqLABS`, or a non-GitHub remote (`url::`, `git::`), gets no R-universe. The workflow logs a warning, and the package must be available from another repository (for example CRAN).
 
 The R-universe must build every remote, from its latest GitHub release, at a version that satisfies the `Imports:` constraints. Check its status page (for example <https://open-systems-pharmacology.r-universe.dev/builds>) before you release.
 
-`setup-r-env` adds the DESCRIPTION `Additional_repositories:` to the R `repos` option, because pak ignores that field. A release version therefore installs from the R-universe with no extra configuration. If a dev version also lists the R-universe in `Additional_repositories:`, the development versions still win: pak always installs a package from its `Remotes:` entry before it looks in the repositories.
+`setup-r-env` adds the DESCRIPTION `Additional_repositories:` to the R `repos` option, because pak ignores that field. A release version therefore installs from the R-universe with no extra configuration. For a package with `renv.lock`, `setup-r-env` does not restore the lockfile on a release version, because the lockfile records the development sources. The release PR checks and the binaries that `publish-release` attaches therefore use the released dependencies.
+
+On a dev version, give every OSP dependency a `Remotes:` entry, and do not list an OSP or esqLABS R-universe in `Additional_repositories:` yourself. Otherwise `setup-r-env` adds that R-universe to the repos, and an OSP dependency with no `Remotes:` entry silently installs its released build. `dev-remotes` logs a warning in that case.
+
+A release DESCRIPTION has no `Remotes:`, and pak ignores `Additional_repositories:`. To install a release from GitHub, add the R-universe to your repos first:
+
+```r
+options(repos = c(osp = "https://open-systems-pharmacology.r-universe.dev", getOption("repos")))
+pak::pkg_install("Open-Systems-Pharmacology/OSPSuite-R@v13.0.1")
+```
 
 ### Setting up a consuming repository
 
@@ -299,47 +308,17 @@ flowchart TD
 
 
 
-### Nightly dependency checks (Remotes-based packages only)
+### Nightly check (Remotes-based packages only)
 
-These two scheduled checks are specific to packages that resolve some dependencies from GitHub via `Remotes:` in DESCRIPTION (typically OSP packages that depend on other OSP packages not published on CRAN). A package whose dependencies all come from CRAN has nothing to gain here and should skip this section.
+This scheduled check is for packages that install some dependencies from GitHub through `Remotes:` (typically OSP packages that depend on other OSP packages). An upstream change on GitHub can break your package even when your repository gets no push, so run `R CMD check` on the default branch every night. On the default branch (a dev version), this checks against the current development dependencies.
 
-The pair catches drift in both directions. `check-dev-deps` checks against the current development dependencies (the `Remotes:` as they stand in DESCRIPTION). `check-released-deps` switches DESCRIPTION to its release form (see [Dependency model](#dependency-model)) and checks against the latest released dependencies from the R-universe. Running both nightly surfaces a break early, whether it comes from an upstream development change or from a not-yet-released upstream fix the package has started relying on.
-
-Every reusable R workflow that installs dependencies (`R-CMD-check-build`, `R-CMD-check-released-deps`, `test-coverage`, `pkgdown`, `update-renv-lockfile`) also has an `extra-repositories` input. These repositories are added to `getOption("repos")` in addition to the DESCRIPTION `Additional_repositories:`. A package that follows the dependency model does not need it. Use it for a repository that the package needs in every mode. The value accepts a comma- or space-separated string, or a YAML block list with one URL per line:
-
-```yaml
-jobs:
-  R-CMD-Check:
-    uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
-    with:
-      extra-repositories: 'https://open-systems-pharmacology.r-universe.dev'
-```
+You do not need a nightly check against the released dependencies. A release PR has a release version, so its checks already use the released dependencies from the R-universe. To check the default branch against them before you start a release, call `R-CMD-check-released-deps` from a caller workflow that has a `workflow_dispatch` trigger, and run it by hand.
 
 <details>
-<summary><code>check-released-deps.yaml</code></summary>
+<summary><code>nightly-check.yaml</code></summary>
 
 ```yaml
-name: Check against released dependencies
-
-on:
-  schedule:
-    - cron: '0 3 * * *'
-  workflow_dispatch:
-
-permissions: read-all
-
-jobs:
-  check-released-deps:
-    uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-released-deps.yaml@main
-```
-
-</details>
-
-<details>
-<summary><code>check-dev-deps.yaml</code></summary>
-
-```yaml
-name: Check against development dependencies
+name: Nightly check
 
 on:
   schedule:
@@ -349,8 +328,18 @@ on:
 permissions: read-all
 
 jobs:
-  check-dev-deps:
+  R-CMD-Check:
     uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
 ```
 
 </details>
+
+Every reusable R workflow that installs dependencies (`R-CMD-check-build`, `R-CMD-check-released-deps`, `test-coverage`, `pkgdown`, `update-renv-lockfile`) also has an `extra-repositories` input. These repositories are added to `getOption("repos")` in addition to the DESCRIPTION `Additional_repositories:`. A package that follows the dependency model does not need it. Use it for a repository that the package needs in every mode. The value accepts a comma- or space-separated string, or a YAML block list with one URL per line:
+
+```yaml
+jobs:
+  R-CMD-Check:
+    uses: Open-Systems-Pharmacology/Workflows/.github/workflows/R-CMD-check-build.yaml@main
+    with:
+      extra-repositories: 'https://example.r-universe.dev'
+```

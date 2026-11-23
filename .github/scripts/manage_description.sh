@@ -214,7 +214,8 @@ load_description() {
   fi
   # `|| true`: with `set -o pipefail`, a missing Version line makes grep exit 1
   # and would abort the script before the guard below can emit the annotation.
-  version=$(grep '^Version:' "$description" | sed 's/^Version:[[:space:]]*//' || true)
+  # `tr -d '\r'`: a DESCRIPTION checked out with CRLF must still classify.
+  version=$(grep '^Version:' "$description" | tr -d '\r' | sed 's/^Version:[[:space:]]*//' || true)
   if [ -z "$version" ]; then
     echo "::error title=Invalid DESCRIPTION::Could not parse Version field from '$description'" >&2
     exit 1
@@ -281,7 +282,11 @@ to_release() {
     done
     $dup || all+=("$e")
   done
-  [ "${#all[@]}" -eq 0 ] && return
+  if [ "${#all[@]}" -eq 0 ]; then
+    # A release has no Remotes field, not even an empty one.
+    if has_field "$desc" Remotes; then remove_field "$desc" Remotes; fi
+    return
+  fi
 
   local new_repos=(${repos[@]+"${repos[@]}"}) url r
   for e in "${all[@]}"; do
@@ -312,7 +317,7 @@ to_release() {
       echo "::warning title=No R-universe for remote::'$e' is not from an owner with an R-universe ($UNIVERSE_OWNERS); the release must find this package in another repository" >&2
     else
       case "${e%@\*release}" in
-        *@* | *#*) echo "::notice title=Remote ref dropped::'$e' has an explicit ref; the release uses the version that the R-universe builds" >&2 ;;
+        *@* | *#*) echo "::warning title=Remote ref dropped::'$e' has an explicit ref; the release uses the version that the R-universe builds, which can differ" >&2 ;;
       esac
     fi
   done
@@ -365,6 +370,23 @@ to_dev() {
     set_field "$desc" Remotes "$DEV_FIELD" "${all[@]}"
   fi
   remove_field "$desc" "$DEV_FIELD"
+}
+
+# A dev version should not list an OSP/esqLABS R-universe itself: setup-r-env
+# adds it to the repos, so an OSP dependency without a Remotes entry would
+# silently resolve to its released build.
+warn_dev_universe() {
+  local r owner
+  read_entries "$1" "$REPOS_FIELD"
+  for r in ${entries[@]+"${entries[@]}"}; do
+    owner="$(normalize_url "$r")"
+    owner="${owner#https://}"
+    owner="${owner%.r-universe.dev}"
+    case " $UNIVERSE_OWNERS " in
+      *" $owner "*)
+        echo "::warning title=R-universe on a dev version::Additional_repositories lists '$r'. On a dev version, an OSP dependency without a Remotes entry then resolves to its released build. Add a Remotes entry for each OSP dependency, or remove this repository." >&2 ;;
+    esac
+  done
 }
 
 # transform_dependencies <to_release|to_dev> <action name>
@@ -429,6 +451,7 @@ cmd_dev_remotes() {
   load_description "$1"
   classify_version nobump
   transform_dependencies to_dev restored
+  warn_dev_universe "$description"
   emit_outputs
 }
 

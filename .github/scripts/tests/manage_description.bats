@@ -225,7 +225,7 @@ write_desc() {
   ! grep -q '^Remotes:' "$DESC"
   [ "$(awk '/^Config\/osp\/dev-remotes:/{r=1;next} r&&/^[^ ]/{exit} r' "$DESC")" = "$(printf '    Open-Systems-Pharmacology/pinned@v2.0.0,\n    Open-Systems-Pharmacology/tracked,\n    url::https://example.com/pkg.tar.gz')" ]
   [ "$(grep -c 'r-universe.dev' "$DESC")" = "2" ]
-  [[ "$output" == *"::notice title=Remote ref dropped::"* ]]
+  [[ "$output" == *"::warning title=Remote ref dropped::"* ]]
   [[ "$output" == *"::warning title=No R-universe for remote::"* ]]
 }
 
@@ -462,4 +462,56 @@ write_desc() {
   [[ "$output" == *"REMOTES_ACTION=released"* ]]
   ! grep -q '^Remotes:' "$DESC"
   [ "$(grep -c 'r-universe.dev' "$DESC")" = "1" ]
+}
+
+@test "release-remotes: an empty Remotes field is removed" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "License: MIT"
+
+  run "$SCRIPT" release-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  ! grep -q '^Remotes:' "$DESC"
+  grep -q '^License: MIT$' "$DESC"
+}
+
+@test "detect-version: CRLF dev version is still a dev version" {
+  printf 'Package: foo\r\nVersion: 1.2.3.9000\r\nLicense: MIT\r\n' > "$DESC"
+
+  run "$SCRIPT" detect-version "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"IS_DEV_VERSION=true"* ]]
+  [[ "$output" == *"PKG_VERSION=1.2.3.9000"* ]]
+}
+
+@test "dev-remotes: warns when a dev version lists an OSP R-universe itself" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes: Open-Systems-Pharmacology/OSPSuite.Plots" \
+    "Additional_repositories: https://open-systems-pharmacology.r-universe.dev" \
+    "License: MIT"
+
+  run "$SCRIPT" dev-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning title=R-universe on a dev version::"* ]]
+}
+
+@test "dev-remotes: no universe warning after a release round trip" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes: Open-Systems-Pharmacology/OSPSuite.Plots" \
+    "License: MIT"
+
+  "$SCRIPT" release-remotes "$DESC" >/dev/null 2>&1
+  run "$SCRIPT" dev-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"R-universe on a dev version"* ]]
 }
