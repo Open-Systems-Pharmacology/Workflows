@@ -27,6 +27,10 @@ runs:
       shell: Rscript {0}
       env:
         EXTRA_REPOSITORIES: ${{ inputs.extra-repositories }}
+        # A renv root of its own, as r-lib/actions/setup-renv does. In
+        # release-pr and dev-pr, setup-r-dependencies has already used the
+        # default root (~/.cache/R/renv), and renv then fails to write there.
+        RENV_PATHS_ROOT: ${{ runner.temp }}/renv-snapshot
       run: |
         Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE")
         # Projects without renv/activate.R do not install renv on startup.
