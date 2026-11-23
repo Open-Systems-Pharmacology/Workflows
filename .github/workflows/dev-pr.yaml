@@ -4,9 +4,10 @@
 # default branch it:
 #   1. runs usethis::use_dev_version()  (Version x.y.z -> x.y.z.9000, and adds a
 #      `# <pkg> (development version)` NEWS.md heading)
-#   2. strips @*release from Remotes    (OSP-specific; reuses manage_description.sh)
-#      Skipped for packages with no Remotes field, e.g. ones that resolve their
-#      OSP dependencies from an R-universe via Additional_repositories instead.
+#   2. restores the OSP development dependencies (OSP-specific; reuses
+#      manage_description.sh dev-remotes): `Config/osp/dev-remotes:` entries
+#      move back to `Remotes:`, and any legacy `@*release` ref is stripped.
+#      A no-op for packages with no Remotes field.
 # then opens a PR with those changes.
 #
 # Mirrors the manual "Restoring development mode" procedure:
@@ -96,17 +97,17 @@ jobs:
           ver <- as.character(desc::desc_get_version("DESCRIPTION"))
           cat(sprintf("DEV_VERSION=%s\n", ver), file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
 
-      - name: Unpin Remotes
-        id: unpin
+      - name: Restore development Remotes
+        id: deps
         shell: bash
-        run: .workflows-repo/.github/scripts/manage_description.sh unpin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+        run: .workflows-repo/.github/scripts/manage_description.sh dev-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
 
       - name: Open restore-development PR
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           DEV_VERSION: ${{ steps.dev.outputs.DEV_VERSION }}
-          REMOTES_ACTION: ${{ steps.unpin.outputs.REMOTES_ACTION }}
+          REMOTES_ACTION: ${{ steps.deps.outputs.REMOTES_ACTION }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -127,8 +128,8 @@ jobs:
           git push --force origin "$branch"
 
           remotes_bullet=""
-          if [ "$REMOTES_ACTION" = "stripped" ]; then
-            remotes_bullet=$'\n- `Remotes` unpinned (`@*release` stripped)'
+          if [ "$REMOTES_ACTION" = "restored" ]; then
+            remotes_bullet=$'\n- OSP dependencies resolve from GitHub `Remotes` again (development versions)'
           fi
 
           # Only an OPEN PR counts as existing; `gh pr view` would also match a

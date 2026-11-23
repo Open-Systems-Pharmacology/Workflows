@@ -164,132 +164,302 @@ write_desc() {
   [ "$status" -ne 0 ]
 }
 
-# --- pin-remotes subcommand --------------------------------------------------
+# --- release-remotes subcommand ----------------------------------------------
 
-@test "pin-remotes: bare entries get @*release and REMOTES_ACTION=added" {
-  write_desc \
-    "Package: foo" \
-    "Version: 1.2.3.9000" \
-    "Remotes:" \
-    "    org/repo," \
-    "    other/pkg" \
-    "License: MIT"
-
-  run "$SCRIPT" pin-remotes "$DESC"
-
-  [ "$status" -eq 0 ]
-  grep -q 'org/repo@\*release,' "$DESC"
-  grep -q 'other/pkg@\*release' "$DESC"
-  [[ "$output" == *"REMOTES_ACTION=added"* ]]
-}
-
-@test "pin-remotes: already pinned reports REMOTES_ACTION=unchanged, no duplicates" {
+@test "release-remotes: tracking remotes move to Config/osp/dev-remotes, R-universe added" {
   write_desc \
     "Package: foo" \
     "Version: 1.2.3" \
     "Remotes:" \
-    "    org/repo@*release" \
+    "    Open-Systems-Pharmacology/OSPSuite.RUtils," \
+    "    tlf=Open-Systems-Pharmacology/TLF-Library," \
+    "    github::esqLABS/osp.snapshots" \
     "License: MIT"
 
-  run "$SCRIPT" pin-remotes "$DESC"
+  run "$SCRIPT" release-remotes "$DESC"
 
   [ "$status" -eq 0 ]
-  count=$(grep -o '@\*release' "$DESC" | wc -l | tr -d ' ')
-  [ "$count" = "1" ]
-  [[ "$output" == *"REMOTES_ACTION=unchanged"* ]]
-}
-
-@test "pin-remotes: entry with a foreign @ref is re-pinned to @*release" {
-  write_desc \
-    "Package: foo" \
-    "Version: 1.2.3" \
-    "Remotes:" \
-    "    org/repo@develop," \
-    "    other/pkg@v1.0.0" \
-    "License: MIT"
-
-  run "$SCRIPT" pin-remotes "$DESC"
-
-  [ "$status" -eq 0 ]
-  grep -q 'org/repo@\*release,' "$DESC"
-  grep -q 'other/pkg@\*release' "$DESC"
-  ! grep -q '@develop' "$DESC"
-  ! grep -q '@v1.0.0' "$DESC"
-  [[ "$output" == *"REMOTES_ACTION=added"* ]]
-}
-
-@test "pin-remotes: no Remotes field reports REMOTES_ACTION=none" {
-  write_desc \
-    "Package: foo" \
-    "Version: 1.2.3" \
-    "License: MIT"
-
-  run "$SCRIPT" pin-remotes "$DESC"
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"REMOTES_ACTION=none"* ]]
-}
-
-@test "pin-remotes: block ends at next top-level field" {
-  write_desc \
-    "Package: foo" \
-    "Version: 1.2.3" \
-    "Remotes:" \
-    "    org/repo" \
-    "License: MIT" \
-    "Suggests: bar"
-
-  run "$SCRIPT" pin-remotes "$DESC"
-
-  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=released"* ]]
+  ! grep -q '^Remotes:' "$DESC"
+  grep -q '^Config/osp/dev-remotes:$' "$DESC"
+  grep -q '^    Open-Systems-Pharmacology/OSPSuite.RUtils,$' "$DESC"
+  grep -q '^    tlf=Open-Systems-Pharmacology/TLF-Library,$' "$DESC"
+  grep -q '^    github::esqLABS/osp.snapshots$' "$DESC"
+  grep -q '^Additional_repositories:$' "$DESC"
+  grep -q '^    https://open-systems-pharmacology.r-universe.dev,$' "$DESC"
+  grep -q '^    https://esqlabs.r-universe.dev$' "$DESC"
   grep -q '^License: MIT$' "$DESC"
-  grep -q '^Suggests: bar$' "$DESC"
-  ! grep -q 'License.*@\*release' "$DESC"
 }
 
-# --- unpin-remotes subcommand ------------------------------------------------
-
-@test "unpin-remotes: pinned entries get @*release stripped, REMOTES_ACTION=stripped" {
+@test "release-remotes: legacy @*release entries count as tracking" {
   write_desc \
     "Package: foo" \
-    "Version: 1.2.3.9000" \
+    "Version: 1.2.3" \
     "Remotes:" \
-    "    org/repo@*release," \
-    "    other/pkg@*release" \
+    "    Open-Systems-Pharmacology/repo@*release" \
     "License: MIT"
 
-  run "$SCRIPT" unpin-remotes "$DESC"
+  run "$SCRIPT" release-remotes "$DESC"
 
   [ "$status" -eq 0 ]
   ! grep -q '@\*release' "$DESC"
-  grep -q 'org/repo' "$DESC"
-  grep -q 'other/pkg' "$DESC"
-  [[ "$output" == *"REMOTES_ACTION=stripped"* ]]
+  ! grep -q '^Remotes:' "$DESC"
+  grep -q '^    Open-Systems-Pharmacology/repo$' "$DESC"
+  grep -q 'https://open-systems-pharmacology.r-universe.dev' "$DESC"
 }
 
-@test "unpin-remotes: already bare reports REMOTES_ACTION=unchanged" {
+@test "release-remotes: pinned and non-GitHub remotes move too, Remotes is dropped" {
   write_desc \
     "Package: foo" \
-    "Version: 1.2.3.9000" \
+    "Version: 1.2.3" \
     "Remotes:" \
-    "    org/repo" \
+    "    Open-Systems-Pharmacology/pinned@v2.0.0," \
+    "    Open-Systems-Pharmacology/tracked," \
+    "    url::https://example.com/pkg.tar.gz" \
     "License: MIT"
 
-  run "$SCRIPT" unpin-remotes "$DESC"
+  run "$SCRIPT" release-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=released"* ]]
+  ! grep -q '^Remotes:' "$DESC"
+  [ "$(awk '/^Config\/osp\/dev-remotes:/{r=1;next} r&&/^[^ ]/{exit} r' "$DESC")" = "$(printf '    Open-Systems-Pharmacology/pinned@v2.0.0,\n    Open-Systems-Pharmacology/tracked,\n    url::https://example.com/pkg.tar.gz')" ]
+  [ "$(grep -c 'r-universe.dev' "$DESC")" = "2" ]
+  [[ "$output" == *"::notice title=Remote ref dropped::"* ]]
+  [[ "$output" == *"::warning title=No R-universe for remote::"* ]]
+}
+
+@test "release-remotes: keeps an existing Additional_repositories line, no duplicate URL" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/OSPSuite.Plots" \
+    "Additional_repositories: https://open-systems-pharmacology.r-universe.dev/" \
+    "License: MIT"
+
+  run "$SCRIPT" release-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  grep -q '^Additional_repositories: https://open-systems-pharmacology.r-universe.dev/$' "$DESC"
+  [ "$(grep -c 'r-universe.dev' "$DESC")" = "1" ]
+}
+
+@test "release-remotes: idempotent, second run reports unchanged" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/repo" \
+    "License: MIT"
+
+  "$SCRIPT" release-remotes "$DESC" >/dev/null 2>&1
+  cp "$DESC" "$TMPDIR/first"
+  run "$SCRIPT" release-remotes "$DESC"
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=unchanged"* ]]
-  ! grep -q '@\*release' "$DESC"
+  cmp -s "$DESC" "$TMPDIR/first"
 }
 
-@test "unpin-remotes: no Remotes field reports REMOTES_ACTION=none" {
+@test "release-remotes: no Remotes field reports REMOTES_ACTION=none" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "License: MIT"
+
+  run "$SCRIPT" release-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=none"* ]]
+  ! grep -q 'Additional_repositories' "$DESC"
+}
+
+@test "release-remotes: a pinned OSP remote moves and its R-universe is added" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/rSharp@v2.0.0" \
+    "License: MIT"
+
+  run "$SCRIPT" release-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=released"* ]]
+  ! grep -q '^Remotes:' "$DESC"
+  grep -q '^    Open-Systems-Pharmacology/rSharp@v2.0.0$' "$DESC"
+  grep -q 'https://open-systems-pharmacology.r-universe.dev' "$DESC"
+}
+
+# --- dev-remotes subcommand --------------------------------------------------
+
+@test "dev-remotes: stored remotes move back to Remotes" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Config/osp/dev-remotes:" \
+    "    Open-Systems-Pharmacology/repo," \
+    "    pkg=esqLABS/pkg" \
+    "Additional_repositories:" \
+    "    https://open-systems-pharmacology.r-universe.dev" \
+    "License: MIT"
+
+  run "$SCRIPT" dev-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=restored"* ]]
+  ! grep -q 'Config/osp/dev-remotes' "$DESC"
+  grep -q '^Remotes:$' "$DESC"
+  grep -q '^    Open-Systems-Pharmacology/repo,$' "$DESC"
+  grep -q '^    pkg=esqLABS/pkg$' "$DESC"
+  # Additional_repositories is left alone: Remotes win over repos in pak.
+  grep -q '^    https://open-systems-pharmacology.r-universe.dev$' "$DESC"
+}
+
+@test "dev-remotes: merges stored remotes after kept pins" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/pinned@v2.0.0" \
+    "Config/osp/dev-remotes:" \
+    "    Open-Systems-Pharmacology/tracked" \
+    "License: MIT"
+
+  run "$SCRIPT" dev-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [ "$(awk '/^Remotes:/{r=1;next} r&&/^[^ ]/{exit} r' "$DESC")" = "$(printf '    Open-Systems-Pharmacology/pinned@v2.0.0,\n    Open-Systems-Pharmacology/tracked')" ]
+  ! grep -q 'Config/osp/dev-remotes' "$DESC"
+}
+
+@test "dev-remotes: legacy @*release refs are stripped" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/repo@*release," \
+    "    esqLABS/pkg@*release" \
+    "License: MIT"
+
+  run "$SCRIPT" dev-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=restored"* ]]
+  ! grep -q '@\*release' "$DESC"
+  grep -q '^    Open-Systems-Pharmacology/repo,$' "$DESC"
+  grep -q '^    esqLABS/pkg$' "$DESC"
+}
+
+@test "dev-remotes: already in dev mode keeps the file byte-identical" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes: Open-Systems-Pharmacology/repo, esqLABS/pkg" \
+    "License: MIT"
+  cp "$DESC" "$TMPDIR/orig"
+
+  run "$SCRIPT" dev-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=unchanged"* ]]
+  cmp -s "$DESC" "$TMPDIR/orig"
+}
+
+@test "dev-remotes: no Remotes field reports REMOTES_ACTION=none" {
   write_desc \
     "Package: foo" \
     "Version: 1.2.3.9000" \
     "License: MIT"
 
-  run "$SCRIPT" unpin-remotes "$DESC"
+  run "$SCRIPT" dev-remotes "$DESC"
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=none"* ]]
+}
+
+@test "release then dev round-trips the Remotes block" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/pinned@v2.0.0," \
+    "    Open-Systems-Pharmacology/tracked" \
+    "Additional_repositories: https://open-systems-pharmacology.r-universe.dev" \
+    "License: MIT"
+  cp "$DESC" "$TMPDIR/orig"
+
+  "$SCRIPT" release-remotes "$DESC" >/dev/null 2>&1
+  "$SCRIPT" dev-remotes "$DESC" >/dev/null 2>&1
+
+  cmp -s "$DESC" "$TMPDIR/orig"
+}
+
+@test "release-remotes: owners without an R-universe move with a warning, no URL added" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "    someone/elsewhere," \
+    "    Open-Systems-Pharmacology/OSPSuite.RUtils" \
+    "License: MIT"
+
+  run "$SCRIPT" release-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  ! grep -q '^Remotes:' "$DESC"
+  grep -q '^    someone/elsewhere,$' "$DESC"
+  ! grep -q 'someone.r-universe.dev' "$DESC"
+  grep -q 'open-systems-pharmacology.r-universe.dev' "$DESC"
+  [[ "$output" == *"::warning title=No R-universe for remote::'someone/elsewhere'"* ]]
+}
+
+@test "release then dev removes only the repositories the release added" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/OSPSuite.RUtils," \
+    "    esqLABS/osp.snapshots" \
+    "Additional_repositories: https://open-systems-pharmacology.r-universe.dev" \
+    "License: MIT"
+
+  "$SCRIPT" release-remotes "$DESC" >/dev/null 2>&1
+  grep -q '^Config/osp/release-repositories:$' "$DESC"
+  grep -q '^    https://esqlabs.r-universe.dev$' "$DESC"
+  run "$SCRIPT" dev-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  ! grep -q 'Config/osp/release-repositories' "$DESC"
+  ! grep -q 'esqlabs.r-universe.dev' "$DESC"
+  grep -q 'https://open-systems-pharmacology.r-universe.dev' "$DESC"
+}
+
+@test "release then dev with no Additional_repositories is byte-identical" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes:" \
+    "    ospsuite=Open-Systems-Pharmacology/OSPSuite-R," \
+    "    tlf=Open-Systems-Pharmacology/TLF-Library" \
+    "License: MIT"
+  cp "$DESC" "$TMPDIR/orig"
+
+  "$SCRIPT" release-remotes "$DESC" >/dev/null 2>&1
+  grep -q '^Additional_repositories:$' "$DESC"
+  "$SCRIPT" dev-remotes "$DESC" >/dev/null 2>&1
+
+  cmp -s "$DESC" "$TMPDIR/orig"
+}
+
+@test "release-remotes: CRLF DESCRIPTION (Windows checkout) is parsed" {
+  printf 'Package: foo\r\nVersion: 1.2.3\r\nRemotes:\r\n    Open-Systems-Pharmacology/OSPSuite.RUtils,\r\n    Open-Systems-Pharmacology/TLF-Library\r\nAdditional_repositories: https://open-systems-pharmacology.r-universe.dev\r\nLicense: MIT\r\n' > "$DESC"
+
+  run "$SCRIPT" release-remotes "$DESC"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"REMOTES_ACTION=released"* ]]
+  ! grep -q '^Remotes:' "$DESC"
+  [ "$(grep -c 'r-universe.dev' "$DESC")" = "1" ]
 }

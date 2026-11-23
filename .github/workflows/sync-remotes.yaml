@@ -1,11 +1,14 @@
 ---
-# Reusable workflow that keeps `Remotes:` in sync with the package Version, in
-# the pull request itself.
+# Reusable workflow that keeps the OSP dependency fields of DESCRIPTION in sync
+# with the package Version, in the pull request itself.
 #
-# A dev version (x.y.z.NNNN) gets bare Remotes (no @*release); a release version
-# (x.y.z) gets @*release pinned. The corrected DESCRIPTION is committed and
-# pushed back onto the PR head branch, so the merged (and later tagged) tree
-# already carries the right pin. See docs/description-tagging-rethink.md.
+# A dev version (x.y.z.NNNN) resolves its OSP dependencies from GitHub through
+# bare `Remotes:` (manage_description.sh dev-remotes). A release version (x.y.z)
+# resolves them from the R-universe: all remotes move to
+# `Config/osp/dev-remotes:`, `Remotes:` is removed, and the R-universe goes into
+# `Additional_repositories:` (manage_description.sh release-remotes). The
+# corrected DESCRIPTION is committed and pushed back onto the PR head branch, so
+# the merged (and later tagged) tree already carries the right fields.
 #
 # Wire this on `pull_request` from the caller. Pushing to the PR branch uses the
 # default GITHUB_TOKEN, so no GitHub App token is needed. Fork PRs are reported
@@ -64,10 +67,10 @@ jobs:
           esac
           if [ "$is_dev" = "true" ]; then
             echo "VERSION_KIND=dev" >> "$GITHUB_OUTPUT"
-            "$script" unpin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+            "$script" dev-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
           else
             echo "VERSION_KIND=release" >> "$GITHUB_OUTPUT"
-            "$script" pin-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
+            "$script" release-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
           fi
 
       - name: Commit synced DESCRIPTION to PR branch
@@ -98,8 +101,8 @@ jobs:
           short_sha="${COMMIT_HASH:0:7}"
           commit_url="${SERVER_URL}/${REPO}/commit/${COMMIT_HASH}"
           case "$REMOTES_ACTION" in
-            added)    action="Pinned Remotes to \`@*release\` (release version)" ;;
-            stripped) action="Stripped \`@*release\` from Remotes (dev version)" ;;
+            released) action="Switched OSP dependencies to the R-universe (release version)" ;;
+            restored) action="Restored OSP dependencies to GitHub \`Remotes\` (dev version)" ;;
             *)        action="Updated Remotes" ;;
           esac
           echo "::notice title=Remotes synced::${action}; pushed ${short_sha}"
@@ -110,7 +113,7 @@ jobs:
             echo ""
             echo "- **Commit:** [\`${short_sha}\`](${commit_url})"
             echo ""
-            echo "<details><summary>Remotes after</summary>"
+            echo "<details><summary>Dependency fields after</summary>"
             echo ""
             echo '```'
             echo "$REMOTES_AFTER_B64" | base64 -d

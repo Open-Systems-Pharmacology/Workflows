@@ -70,9 +70,13 @@ jobs:
           # Projects without renv/activate.R do not install renv on startup.
           if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
 
-          # Add the extra repositories that renv.lock does not list.
+          # Add the extra repositories that renv.lock does not list: the input
+          # and the DESCRIPTION Additional_repositories (a release version
+          # lists its R-universe there).
           repos <- getOption("repos")
-          extra <- strsplit(Sys.getenv("EXTRA_REPOSITORIES"), "[[:space:],]+")[[1]]
+          additional <- read.dcf("DESCRIPTION", fields = "Additional_repositories")[1, 1]
+          extra <- paste(Sys.getenv("EXTRA_REPOSITORIES"), if (is.na(additional)) "" else additional)
+          extra <- strsplit(extra, "[[:space:],]+")[[1]]
           extra <- setdiff(sub("/+$", "", extra[nzchar(extra)]), sub("/+$", "", repos))
           options(repos = c(repos, stats::setNames(extra, extra)))
 
