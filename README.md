@@ -313,6 +313,8 @@ flowchart TD
 
 This scheduled check is for packages that install some dependencies from GitHub through `Remotes:` (typically OSP packages that depend on other OSP packages). An upstream change on GitHub can break your package even when your repository gets no push, so run `R CMD check` on the default branch every night. On the default branch (a dev version), this checks against the current development dependencies.
 
+For a package with `renv.lock`, this check restores the lockfile. Pair it with `update-renv-lockfile` scheduled earlier in the night: that workflow installs the current dependencies, checks the package with them, and commits the new `renv.lock`, so the nightly check runs on dependencies that are at most a day old.
+
 You do not need a nightly check against the released dependencies. A release PR has a release version, so its checks already use the released dependencies from the R-universe. To check the default branch against them before you start a release, call `R-CMD-check-released-deps` from a caller workflow that has a `workflow_dispatch` trigger, and run it by hand.
 
 <details>
