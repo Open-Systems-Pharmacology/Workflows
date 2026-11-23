@@ -14,6 +14,18 @@ write_desc() {
   printf '%s\n' "$@" > "$DESC"
 }
 
+# Fails unless grep finds no match (status 1). A negated command such as
+# `! grep ...` does not fail a Bats test unless it is the last command, and it
+# would also hide a grep error (status 2).
+refute_grep() {
+  local status=0
+  grep "$@" || status=$?
+  if [ "$status" -ne 1 ]; then
+    echo "expected no match (status 1), got status $status: grep $*"
+    return 1
+  fi
+}
+
 # --- dispatch / shared IO contract -------------------------------------------
 
 @test "no subcommand: exits non-zero with usage ::error::" {
@@ -180,7 +192,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=released"* ]]
-  ! grep -q '^Remotes:' "$DESC"
+  refute_grep -q '^Remotes:' "$DESC"
   grep -q '^Config/osp/dev-remotes:$' "$DESC"
   grep -q '^    Open-Systems-Pharmacology/OSPSuite.RUtils,$' "$DESC"
   grep -q '^    tlf=Open-Systems-Pharmacology/TLF-Library,$' "$DESC"
@@ -202,8 +214,8 @@ write_desc() {
   run "$SCRIPT" release-remotes "$DESC"
 
   [ "$status" -eq 0 ]
-  ! grep -q '@\*release' "$DESC"
-  ! grep -q '^Remotes:' "$DESC"
+  refute_grep -q '@\*release' "$DESC"
+  refute_grep -q '^Remotes:' "$DESC"
   grep -q '^    Open-Systems-Pharmacology/repo$' "$DESC"
   grep -q 'https://open-systems-pharmacology.r-universe.dev' "$DESC"
 }
@@ -222,7 +234,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=released"* ]]
-  ! grep -q '^Remotes:' "$DESC"
+  refute_grep -q '^Remotes:' "$DESC"
   [ "$(awk '/^Config\/osp\/dev-remotes:/{r=1;next} r&&/^[^ ]/{exit} r' "$DESC")" = "$(printf '    Open-Systems-Pharmacology/pinned@v2.0.0,\n    Open-Systems-Pharmacology/tracked,\n    url::https://example.com/pkg.tar.gz')" ]
   [ "$(grep -c 'r-universe.dev' "$DESC")" = "2" ]
   [[ "$output" == *"::warning title=Remote ref dropped::"* ]]
@@ -272,7 +284,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=none"* ]]
-  ! grep -q 'Additional_repositories' "$DESC"
+  refute_grep -q 'Additional_repositories' "$DESC"
 }
 
 @test "release-remotes: a pinned OSP remote moves and its R-universe is added" {
@@ -287,7 +299,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=released"* ]]
-  ! grep -q '^Remotes:' "$DESC"
+  refute_grep -q '^Remotes:' "$DESC"
   grep -q '^    Open-Systems-Pharmacology/rSharp@v2.0.0$' "$DESC"
   grep -q 'https://open-systems-pharmacology.r-universe.dev' "$DESC"
 }
@@ -309,7 +321,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=restored"* ]]
-  ! grep -q 'Config/osp/dev-remotes' "$DESC"
+  refute_grep -q 'Config/osp/dev-remotes' "$DESC"
   grep -q '^Remotes:$' "$DESC"
   grep -q '^    Open-Systems-Pharmacology/repo,$' "$DESC"
   grep -q '^    pkg=esqLABS/pkg$' "$DESC"
@@ -331,7 +343,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [ "$(awk '/^Remotes:/{r=1;next} r&&/^[^ ]/{exit} r' "$DESC")" = "$(printf '    Open-Systems-Pharmacology/pinned@v2.0.0,\n    Open-Systems-Pharmacology/tracked')" ]
-  ! grep -q 'Config/osp/dev-remotes' "$DESC"
+  refute_grep -q 'Config/osp/dev-remotes' "$DESC"
 }
 
 @test "dev-remotes: legacy @*release refs are stripped" {
@@ -347,7 +359,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=restored"* ]]
-  ! grep -q '@\*release' "$DESC"
+  refute_grep -q '@\*release' "$DESC"
   grep -q '^    Open-Systems-Pharmacology/repo,$' "$DESC"
   grep -q '^    esqLABS/pkg$' "$DESC"
 }
@@ -408,9 +420,9 @@ write_desc() {
   run "$SCRIPT" release-remotes "$DESC"
 
   [ "$status" -eq 0 ]
-  ! grep -q '^Remotes:' "$DESC"
+  refute_grep -q '^Remotes:' "$DESC"
   grep -q '^    someone/elsewhere,$' "$DESC"
-  ! grep -q 'someone.r-universe.dev' "$DESC"
+  refute_grep -q 'someone.r-universe.dev' "$DESC"
   grep -q 'open-systems-pharmacology.r-universe.dev' "$DESC"
   [[ "$output" == *"::warning title=No R-universe for remote::'someone/elsewhere'"* ]]
 }
@@ -431,8 +443,8 @@ write_desc() {
   run "$SCRIPT" dev-remotes "$DESC"
 
   [ "$status" -eq 0 ]
-  ! grep -q 'Config/osp/release-repositories' "$DESC"
-  ! grep -q 'esqlabs.r-universe.dev' "$DESC"
+  refute_grep -q 'Config/osp/release-repositories' "$DESC"
+  refute_grep -q 'esqlabs.r-universe.dev' "$DESC"
   grep -q 'https://open-systems-pharmacology.r-universe.dev' "$DESC"
 }
 
@@ -460,7 +472,7 @@ write_desc() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"REMOTES_ACTION=released"* ]]
-  ! grep -q '^Remotes:' "$DESC"
+  refute_grep -q '^Remotes:' "$DESC"
   [ "$(grep -c 'r-universe.dev' "$DESC")" = "1" ]
 }
 
@@ -474,7 +486,7 @@ write_desc() {
   run "$SCRIPT" release-remotes "$DESC"
 
   [ "$status" -eq 0 ]
-  ! grep -q '^Remotes:' "$DESC"
+  refute_grep -q '^Remotes:' "$DESC"
   grep -q '^License: MIT$' "$DESC"
 }
 
@@ -533,4 +545,15 @@ write_desc() {
   "$SCRIPT" dev-remotes "$DESC" >/dev/null 2>&1
 
   cmp -s "$DESC" "$TMPDIR/orig"
+}
+
+@test "refute_grep fails on a match and on a grep error" {
+  printf 'abc\n' > "$TMPDIR/f"
+
+  run refute_grep -q abc "$TMPDIR/f"
+  [ "$status" -eq 1 ]
+  run refute_grep -q abc "$TMPDIR/missing-file"
+  [ "$status" -eq 1 ]
+  run refute_grep -q xyz "$TMPDIR/f"
+  [ "$status" -eq 0 ]
 }
