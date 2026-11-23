@@ -39,6 +39,7 @@ You edit only `Remotes:` on the default branch. The workflows do the switch:
 
 - `release-pr` and `sync-remotes` (on a release version) move every remote to `Config/osp/dev-remotes:`, remove `Remotes:`, and add the R-universe of each OSP or esqLABS owner to `Additional_repositories:`.
 - `dev-pr` and `sync-remotes` (on a dev version) move the `Config/osp/dev-remotes:` entries back to `Remotes:`, and remove from `Additional_repositories:` the repositories that the release switch added. Repositories that you added yourself stay.
+- In a renv project, each of these switches also re-snapshots `renv.lock` in the same change.
 - `R-CMD-check-released-deps` does the release switch for the duration of the check only.
 
 The switch concerns only `Remotes:` entries. CRAN dependencies do not change. A release never has a `Remotes:` field, so the release installs each dependency from a repository:
@@ -48,7 +49,7 @@ The switch concerns only `Remotes:` entries. CRAN dependencies do not change. A 
 
 The R-universe must build every remote, from its latest GitHub release, at a version that satisfies the `Imports:` constraints. Check its status page (for example <https://open-systems-pharmacology.r-universe.dev/builds>) before you release.
 
-`setup-r-env` adds the DESCRIPTION `Additional_repositories:` to the R `repos` option, because pak ignores that field. A release version therefore installs from the R-universe with no extra configuration. For a package with `renv.lock`, `setup-r-env` does not restore the lockfile on a release version, because the lockfile records the development sources. The release PR checks and the binaries that `publish-release` attaches therefore use the released dependencies.
+`setup-r-env` adds the DESCRIPTION `Additional_repositories:` to the R `repos` option, because pak ignores that field. A release version therefore installs from the R-universe with no extra configuration. For a package with `renv.lock`, the lockfile follows the same switch. `release-pr`, `dev-pr` and `sync-remotes` re-snapshot `renv.lock` (with the `snapshot-renv-lock` action) whenever they switch the dependency fields. A release lockfile records the OSP dependencies from the R-universe, and a dev lockfile records them from GitHub. CI restores the lockfile in both cases, so what you test is what `renv.lock` records. The release PR checks and the binaries that `publish-release` attaches use the released dependencies.
 
 On a dev version, give every OSP dependency a `Remotes:` entry, and do not list an OSP or esqLABS R-universe in `Additional_repositories:` yourself. Otherwise `setup-r-env` adds that R-universe to the repos, and an OSP dependency with no `Remotes:` entry silently installs its released build. `dev-remotes` logs a warning in that case.
 

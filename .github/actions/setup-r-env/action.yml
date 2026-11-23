@@ -38,11 +38,7 @@ inputs:
     required: false
     default: '8.0.x'
   ignore-renv:
-    description: >-
-      Skip renv setup if set to true. renv is also skipped when DESCRIPTION has
-      a release Version (x.y.z): renv.lock records the development sources of
-      the OSP dependencies, and a release resolves them from the R-universe in
-      Additional_repositories instead.
+    description: 'Skip renv setup if set to true'
     required: false
     default: 'false'
   extra-packages:
@@ -114,8 +110,9 @@ runs:
         use-public-rspm: ${{ inputs.use-public-rspm }}
         extra-repositories: ${{ steps.repos.outputs.repos }}
 
-    # use_renv: restore renv.lock, unless ignore-renv is set or DESCRIPTION has
-    # a release Version (x.y.z), which resolves from DESCRIPTION instead.
+    # use_renv: restore renv.lock unless ignore-renv is set. renv.lock matches
+    # the Version: release-pr, dev-pr and sync-remotes re-snapshot it whenever
+    # the OSP dependency fields switch between GitHub and the R-universe.
     - name: Check for renv.lock
       id: check-renv
       shell: bash
@@ -123,16 +120,9 @@ runs:
         IGNORE_RENV: ${{ inputs.ignore-renv }}
       run: |
         detected=false
-        [ -f renv.lock ] && detected=true
+        if [ -f renv.lock ]; then detected=true; fi
         use_renv="$detected"
-        [ "$IGNORE_RENV" = 'true' ] && use_renv=false
-        if [ "$use_renv" = true ] && [ -f DESCRIPTION ]; then
-          version=$(grep '^Version:' DESCRIPTION | tr -d '\r' | sed 's/^Version:[[:space:]]*//' || true)
-          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::notice title=renv skipped::Release version $version resolves its dependencies from DESCRIPTION, not renv.lock"
-            use_renv=false
-          fi
-        fi
+        if [ "$IGNORE_RENV" = 'true' ]; then use_renv=false; fi
         echo "renv_detected=$detected" >> "$GITHUB_OUTPUT"
         echo "use_renv=$use_renv" >> "$GITHUB_OUTPUT"
 

@@ -1,0 +1,45 @@
+name: 'Snapshot renv.lock'
+description: >-
+  Installs the project dependencies as DESCRIPTION declares them and records them
+  in renv.lock. Run it from the package root after R is set up. A dev version
+  records its OSP dependencies from their GitHub Remotes, a release version from
+  the R-universe in Additional_repositories, so renv.lock always matches what CI
+  installs for that Version.
+
+inputs:
+  extra-repositories:
+    description: >-
+      Extra CRAN-like repositories to add to getOption("repos"), in addition to
+      the DESCRIPTION Additional_repositories. Comma/space-separated, or one URL
+      per line.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    # setup-r sets RENV_CONFIG_REPOS_OVERRIDE to public RSPM only, and renv then
+    # ignores every other repository, so packages that only exist on an extra
+    # repository (e.g. an R-universe) are "not available". Without it, renv uses
+    # the repositories in renv.lock. Packages in the DESCRIPTION Remotes field
+    # always come from their remote.
+    - name: Install dependencies and snapshot renv.lock
+      shell: Rscript {0}
+      env:
+        EXTRA_REPOSITORIES: ${{ inputs.extra-repositories }}
+      run: |
+        Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE")
+        # Projects without renv/activate.R do not install renv on startup.
+        if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+
+        # Add the extra repositories that renv.lock does not list: the input
+        # and the DESCRIPTION Additional_repositories (a release version lists
+        # its R-universe there).
+        repos <- getOption("repos")
+        additional <- read.dcf("DESCRIPTION", fields = "Additional_repositories")[1, 1]
+        extra <- paste(Sys.getenv("EXTRA_REPOSITORIES"), if (is.na(additional)) "" else additional)
+        extra <- strsplit(extra, "[[:space:],]+")[[1]]
+        extra <- setdiff(sub("/+$", "", extra[nzchar(extra)]), sub("/+$", "", repos))
+        options(repos = c(repos, stats::setNames(extra, extra)))
+
+        renv::install(prompt = FALSE, lock = TRUE)
