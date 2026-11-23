@@ -141,10 +141,17 @@ set_field() {
 
 # --- remote entry helpers ----------------------------------------------------
 
-# Entry without its ref, used to match the same remote across fields.
+# Entry without its ref, used to match the same remote across fields. Only a
+# GitHub entry has a ref to strip (`@ref`, `#123`). Any other source is compared
+# whole: an SSH address such as `git::git@host:team/pkg.git` has an `@` that is
+# part of the address, not a ref.
 remote_id() {
-  local e="${1%%@*}"
-  printf '%s' "${e%%#*}"
+  local e="$1"
+  if [ -n "$(github_spec "$e")" ]; then
+    e="${e%%@*}"
+    e="${e%%#*}"
+  fi
+  printf '%s' "$e"
 }
 
 # GitHub `org/repo` part of an entry (no `pkg=` or `github::` prefix), or

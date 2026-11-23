@@ -515,3 +515,22 @@ write_desc() {
   [ "$status" -eq 0 ]
   [[ "$output" != *"R-universe on a dev version"* ]]
 }
+
+@test "release then dev keeps two SSH git remotes apart" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Remotes:" \
+    "    git::git@bitbucket.org:team/pkgA.git," \
+    "    git::git@bitbucket.org:team/pkgB.git," \
+    "    Open-Systems-Pharmacology/OSPSuite.RUtils" \
+    "License: MIT"
+  cp "$DESC" "$TMPDIR/orig"
+
+  "$SCRIPT" release-remotes "$DESC" >/dev/null 2>&1
+  grep -q '^    git::git@bitbucket.org:team/pkgA.git,$' "$DESC"
+  grep -q '^    git::git@bitbucket.org:team/pkgB.git,$' "$DESC"
+  "$SCRIPT" dev-remotes "$DESC" >/dev/null 2>&1
+
+  cmp -s "$DESC" "$TMPDIR/orig"
+}
