@@ -72,6 +72,13 @@ jobs:
             echo "VERSION_KIND=release" >> "$GITHUB_OUTPUT"
             "$script" release-remotes DESCRIPTION >> "$GITHUB_OUTPUT"
           fi
+          # git add fails on a path that does not exist, so list the renv
+          # files only for a renv project.
+          pattern=DESCRIPTION
+          for f in renv.lock renv/activate.R; do
+            if [ -f "$f" ]; then pattern="$pattern $f"; fi
+          done
+          echo "FILE_PATTERN=$pattern" >> "$GITHUB_OUTPUT"
 
       # When the dependency fields switched, renv.lock must follow, so that a
       # renv restore installs what this Version declares. Same-repo PRs only:
@@ -101,7 +108,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'Sync Remotes for ${{ steps.sync.outputs.VERSION_KIND }} version. [skip actions]'
-          file_pattern: 'DESCRIPTION renv.lock renv/activate.R'
+          file_pattern: ${{ steps.sync.outputs.FILE_PATTERN }}
 
       # Report only when Remotes were actually changed and the fix was pushed.
       # When already in sync (or no Remotes field, or a fork we can't push to),
