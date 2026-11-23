@@ -47,3 +47,10 @@ runs:
         options(repos = c(repos, stats::setNames(extra, extra)))
 
         renv::install(prompt = FALSE, lock = TRUE)
+        # install(lock = TRUE) only merges records into renv.lock. A full
+        # snapshot also drops records the project no longer needs (for example
+        # a development dependency of a GitHub remote) and records the
+        # repositories in use, such as the R-universe of a release version.
+        # dev = TRUE keeps the Suggests packages (testthat, ...) that install()
+        # just recorded: CI restores renv.lock and needs them to run the tests.
+        renv::snapshot(prompt = FALSE, dev = TRUE)
