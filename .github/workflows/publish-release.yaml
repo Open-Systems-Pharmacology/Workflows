@@ -18,8 +18,9 @@
 # workflows or protect tags against GITHUB_TOKEN, tag from a job that uses an App
 # token / PAT instead.)
 #
-# Remotes pinning lives in sync-remotes.yaml; the dev version bump in
-# bump-dev-version.yaml.
+# A release version must have no `Remotes:` field (release-pr removes it). The
+# publish fails before it tags anything when one is present. The dev version
+# bump lives in bump-dev-version.yaml.
 name: publish-release.yaml
 
 on:
@@ -61,6 +62,8 @@ jobs:
             # Dev version: nothing to release. Stay silent (no-op).
             echo "is-release=false" >> "$GITHUB_OUTPUT"
           else
+            # A release must not have Remotes; fail before tagging.
+            .workflows-repo/.github/scripts/manage_description.sh check-dependencies DESCRIPTION
             echo "is-release=true" >> "$GITHUB_OUTPUT"
           fi
           echo "version=$PKG_VERSION" >> "$GITHUB_OUTPUT"

@@ -7,8 +7,6 @@
 #     helper script, richer step summary).
 #   - publish-release.yaml: tags release versions and publishes a GitHub Release
 #     (NEWS.md notes + per-OS binaries).
-# (PR-time Remotes sync is a third workflow, sync-remotes.yaml, which this shim
-# never performed and therefore does not call.)
 #
 # Migration: replace the single
 #   uses: Open-Systems-Pharmacology/Workflows/.github/workflows/bump_dev_version_tag_branch.yaml@<ref>

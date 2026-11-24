@@ -3,7 +3,7 @@
 #
 # A dev version (x.y.z.NNNN) has its trailing component incremented and the
 # change committed; a release version (x.y.z) is a no-op (no commit). Remotes are
-# not touched (they are synced in the PR by sync-remotes.yaml). Releasing
+# not touched (release-pr and dev-pr switch them). Releasing
 # (tag + GitHub Release) is handled by publish-release.yaml.
 #
 # Wire this on push to the default branch from the caller. Because it pushes

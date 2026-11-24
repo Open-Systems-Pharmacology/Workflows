@@ -14,6 +14,11 @@
 #                          on the R-universe (see "Dependency model"). Idempotent.
 #   dev-remotes     <desc> Switch the OSP dependencies back to their development
 #                          versions on GitHub (see "Dependency model"). Idempotent.
+#   check-dependencies <desc>
+#                          Fail when the dependency fields do not match the
+#                          Version: a dev version that still has
+#                          `Config/osp/dev-remotes:`, or a release version that
+#                          has `Remotes:`. Prints how to fix it. Never mutates.
 #
 # Dependency model:
 #   A dev version (x.y.z.NNNN) resolves its OSP dependencies from GitHub through
@@ -39,9 +44,8 @@
 #   Only `Remotes:` entries are concerned. CRAN dependencies are untouched.
 #
 # A subcommand is required. The workflows that use them:
-#   - sync-remotes.yaml runs release-remotes on a release version and
-#     dev-remotes on a dev version, in the PR.
 #   - release-pr.yaml runs release-remotes; dev-pr.yaml runs dev-remotes.
+#   - setup-r-env and publish-release.yaml run check-dependencies.
 #   - R-CMD-check-released-deps.yaml runs release-remotes ephemerally.
 #   - bump-dev-version.yaml bumps the dev version on push to main (bump-version).
 #   - publish-release.yaml tags release versions (detect-version).
@@ -52,16 +56,14 @@
 #     PKG_VERSION=<version after the (possible) bump>
 #     IS_DEV_VERSION=<true|false>
 #     REMOTES_ACTION=<released|restored|unchanged|none>
-#     REMOTES_BEFORE_B64=<base64 of the dependency fields before>
-#     REMOTES_AFTER_B64=<base64 of the dependency fields after>
 #   stderr: human-readable diagnostics and ::notice::/::warning::/::error::
 #   annotations.
 #
 # The "dependency fields" are the `Remotes:`, `Config/osp/dev-remotes:`,
-# `Config/osp/release-repositories:` and `Additional_repositories:` blocks, base64-encoded so multi-line blocks survive
-# transport through $GITHUB_OUTPUT. REMOTES_ACTION=none means there was nothing
-# to switch (no tracking remote, no stored dev remote); unchanged means the
-# fields were already in the expected state. Subcommands that never touch the
+# `Config/osp/release-repositories:` and `Additional_repositories:` blocks.
+# REMOTES_ACTION=none means there was nothing to switch (no tracking remote, no
+# stored dev remote); unchanged means the fields were already in the expected
+# state. Subcommands that never touch the
 # dependency fields (detect-version, bump-version) report none.
 #
 # Exit codes: 0 on success; 1 on missing file or unparseable Version.
@@ -207,9 +209,6 @@ dependency_fields() {
   field_block "$1" "$ADDED_FIELD"
   field_block "$1" "$REPOS_FIELD"
 }
-
-# base64 -w0 is GNU-only; fall back to `tr -d '\n'` to strip newlines portably.
-b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
 
 # Read and validate the DESCRIPTION path + Version field. Populates the
 # globals `version` and `description`. Exits 1 on error.
@@ -424,8 +423,6 @@ emit_outputs() {
   echo "PKG_VERSION=$final_version"
   echo "IS_DEV_VERSION=$is_dev"
   echo "REMOTES_ACTION=$remotes_action"
-  echo "REMOTES_BEFORE_B64=$(b64 "$remotes_before")"
-  echo "REMOTES_AFTER_B64=$(b64 "$remotes_after")"
 }
 
 # --- subcommands -------------------------------------------------------------
@@ -462,10 +459,53 @@ cmd_dev_remotes() {
   emit_outputs
 }
 
+# A manual Version change (usethis::use_version() or use_dev_version()) does
+# not switch the dependency fields. Explain what to change, so that the switch
+# can also be done by hand.
+cmd_check_dependencies() {
+  load_description "$1"
+  classify_version nobump
+  if [ "$is_dev" = true ]; then
+    if has_field "$description" "$DEV_FIELD" || has_field "$description" "$ADDED_FIELD"; then
+      echo "::error title=Dev version with release dependencies::Version $version is a dev version, but DESCRIPTION still has the release dependency fields, so CI would test the released OSP builds. Switch them back (see the log)." >&2
+      cat >&2 <<MSG
+Dev version $version still has $DEV_FIELD.
+Switch the dependency fields back to development. Do one of these:
+  - Use the dev-pr workflow instead of a manual use_dev_version().
+  - Run: manage_description.sh dev-remotes DESCRIPTION
+  - Edit DESCRIPTION by hand:
+      1. Move the entries of $DEV_FIELD to Remotes.
+      2. Remove from Additional_repositories the URLs listed in
+         $ADDED_FIELD (remove the field if it is then empty).
+      3. Remove $DEV_FIELD and $ADDED_FIELD.
+MSG
+      exit 1
+    fi
+    warn_dev_universe "$description"
+  elif has_field "$description" Remotes; then
+    echo "::error title=Release version with Remotes::Version $version is a release version, but DESCRIPTION still has a Remotes field, so CI would test the development OSP builds. Remove it (see the log)." >&2
+    cat >&2 <<MSG
+Release version $version has a Remotes field. A release has none.
+Switch the dependency fields to the release form. Do one of these:
+  - Use the release-pr workflow instead of a manual use_version().
+  - Run: manage_description.sh release-remotes DESCRIPTION
+  - Edit DESCRIPTION by hand:
+      1. Move the entries of Remotes to $DEV_FIELD.
+      2. Remove Remotes.
+      3. Add the R-universe of each remote owner to Additional_repositories,
+         for example https://open-systems-pharmacology.r-universe.dev or
+         https://esqlabs.r-universe.dev, and list the URLs you added in
+         $ADDED_FIELD.
+MSG
+    exit 1
+  fi
+  echo "Dependency fields match version $version." >&2
+}
+
 # --- dispatch ----------------------------------------------------------------
 
 usage() {
-  echo "::error title=Unknown subcommand::Usage: manage_description.sh {detect-version|bump-version|release-remotes|dev-remotes} [DESCRIPTION]" >&2
+  echo "::error title=Unknown subcommand::Usage: manage_description.sh {detect-version|bump-version|release-remotes|dev-remotes|check-dependencies} [DESCRIPTION]" >&2
   exit 2
 }
 
@@ -475,5 +515,6 @@ case "$subcommand" in
   bump-version)    cmd_bump_version "${2:-DESCRIPTION}" ;;
   release-remotes) cmd_release_remotes "${2:-DESCRIPTION}" ;;
   dev-remotes)     cmd_dev_remotes "${2:-DESCRIPTION}" ;;
+  check-dependencies) cmd_check_dependencies "${2:-DESCRIPTION}" ;;
   *)               usage ;;
 esac
