@@ -79,6 +79,8 @@ jobs:
           setup-quarto: ${{ inputs.setup-quarto }}
           setup-tinytex: ${{ inputs.setup-tinytex }}
           ignore-renv: 'true'
+          # The release form above runs on a dev version on purpose.
+          check-dependencies: 'false'
           extra-repositories: ${{ inputs.extra-repositories }}
           extra-packages: |
             rcmdcheck

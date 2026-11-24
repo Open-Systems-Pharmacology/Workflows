@@ -557,3 +557,91 @@ refute_grep() {
   run refute_grep -q xyz "$TMPDIR/f"
   [ "$status" -eq 0 ]
 }
+
+# --- check-dependencies --------------------------------------------------------
+
+@test "check-dependencies: dev version with Remotes passes" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9001" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/OSPSuite-R"
+
+  run "$SCRIPT" check-dependencies "$DESC"
+
+  [ "$status" -eq 0 ]
+}
+
+@test "check-dependencies: release version without Remotes passes" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Additional_repositories: https://open-systems-pharmacology.r-universe.dev" \
+    "Config/osp/dev-remotes: Open-Systems-Pharmacology/OSPSuite-R" \
+    "Config/osp/release-repositories: https://open-systems-pharmacology.r-universe.dev"
+
+  run "$SCRIPT" check-dependencies "$DESC"
+
+  [ "$status" -eq 0 ]
+}
+
+@test "check-dependencies: release version with Remotes fails with instructions" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/OSPSuite-R"
+
+  run "$SCRIPT" check-dependencies "$DESC"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error title=Release version with Remotes::"* ]]
+  [[ "$output" == *"release-remotes DESCRIPTION"* ]]
+}
+
+@test "check-dependencies: manual use_dev_version after a release fails with instructions" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3.9000" \
+    "Additional_repositories: https://open-systems-pharmacology.r-universe.dev" \
+    "Config/osp/dev-remotes: Open-Systems-Pharmacology/OSPSuite-R" \
+    "Config/osp/release-repositories: https://open-systems-pharmacology.r-universe.dev"
+
+  run "$SCRIPT" check-dependencies "$DESC"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error title=Dev version with release dependencies::"* ]]
+  [[ "$output" == *"Move the entries of Config/osp/dev-remotes to Remotes"* ]]
+}
+
+@test "check-dependencies: passes after the release then dev round trip" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/OSPSuite-R"
+  "$SCRIPT" release-remotes "$DESC" >/dev/null 2>&1
+  run "$SCRIPT" check-dependencies "$DESC"
+  [ "$status" -eq 0 ]
+
+  sed -i.bak 's/^Version:.*/Version: 1.2.3.9000/' "$DESC" && rm -f "$DESC.bak"
+  run "$SCRIPT" check-dependencies "$DESC"
+  [ "$status" -eq 1 ]
+
+  "$SCRIPT" dev-remotes "$DESC" >/dev/null 2>&1
+  run "$SCRIPT" check-dependencies "$DESC"
+  [ "$status" -eq 0 ]
+}
+
+@test "check-dependencies: never changes DESCRIPTION" {
+  write_desc \
+    "Package: foo" \
+    "Version: 1.2.3" \
+    "Remotes:" \
+    "    Open-Systems-Pharmacology/OSPSuite-R"
+  cp "$DESC" "$TMPDIR/before"
+
+  run "$SCRIPT" check-dependencies "$DESC"
+
+  cmp "$DESC" "$TMPDIR/before"
+}

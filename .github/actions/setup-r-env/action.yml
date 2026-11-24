@@ -37,6 +37,14 @@ inputs:
     description: '.NET SDK version to install on all runners (e.g. "8.0.x", "10.0.x"). Set to an empty string to skip the setup-dotnet step and use whatever the runner image ships with (which may be no .NET at all, e.g. on macOS).'
     required: false
     default: '8.0.x'
+  check-dependencies:
+    description: >-
+      Fail when the OSP dependency fields of DESCRIPTION do not match the
+      Version (manage_description.sh check-dependencies): a dev version that
+      still has the release fields, or a release version with Remotes. The log
+      explains how to fix it. Set to 'false' to skip.
+    required: false
+    default: 'true'
   ignore-renv:
     description: 'Skip renv setup if set to true'
     required: false
@@ -81,6 +89,13 @@ runs:
       if: inputs.setup-tinytex == 'true'
       uses: r-lib/actions/setup-tinytex@v2
 
+    # A manual Version change does not switch the dependency fields; catch it
+    # here, before the install, with instructions to fix it.
+    - name: Check dependency fields
+      if: inputs.check-dependencies == 'true' && hashFiles('DESCRIPTION') != ''
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/../../scripts/manage_description.sh" check-dependencies DESCRIPTION
+
     # pak ignores Additional_repositories in DESCRIPTION, so add them to the
     # repos here. A release version lists the R-universe of its OSP
     # dependencies there; a dev version resolves them from Remotes instead.
@@ -111,8 +126,8 @@ runs:
         extra-repositories: ${{ steps.repos.outputs.repos }}
 
     # use_renv: restore renv.lock unless ignore-renv is set. renv.lock matches
-    # the Version: release-pr, dev-pr and sync-remotes re-snapshot it whenever
-    # the OSP dependency fields switch between GitHub and the R-universe.
+    # the Version: release-pr and dev-pr re-snapshot it whenever the OSP
+    # dependency fields switch between GitHub and the R-universe.
     - name: Check for renv.lock
       id: check-renv
       shell: bash
